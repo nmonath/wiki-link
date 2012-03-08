@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.umass.cs.iesl.wikilink</groupId>
   <artifactId>wikilink</artifactId>
@@ -26,6 +27,21 @@
       <id>scala-tools.org</id>
       <name>Scala-Tools Maven2 Repository</name>
       <url>http://scala-tools.org/repo-releases</url>
+    </repository>
+    <repository>
+      <id>third.iesl.cs.umass.edu</id>
+      <name>IESL 3rd party repository</name>
+      <url>http://iesl.cs.umass.edu:8081/nexus/content/repositories/thirdparty/</url>
+    </repository>
+    <repository>
+      <id>iesl.cs.umass.edu</id>
+      <name>IESL release repository</name>
+      <url>http://iesl.cs.umass.edu:8081/nexus/content/repositories/releases/</url>
+    </repository>
+    <repository>
+      <id>snapshot.iesl.cs.umass.edu</id>
+      <name>IESL snapshot repository</name>
+      <url>http://iesl.cs.umass.edu:8081/nexus/content/repositories/snapshots/</url>
     </repository>
   </repositories>
 
@@ -62,6 +78,11 @@
       <artifactId>scalatest_${scala.version}</artifactId>
       <version>1.7.1</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>cc.refectorie.user.sameer</groupId>
+        <artifactId>util</artifactId>
+        <version>1.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
 
