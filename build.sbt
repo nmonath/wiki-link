@@ -17,7 +17,8 @@ libraryDependencies ++= Seq(
      "org.scalatest" %% "scalatest" % "1.6.1" % "test",
      "junit" % "junit" % "4.8.1",
      "net.databinder" %% "dispatch-http" % "0.8.8",
-     "cc.refectorie.user.sameer" % "util" % "1.1-SNAPSHOT"
+     "cc.refectorie.user.sameer" % "util" % "1.1-SNAPSHOT",
+     "commons-net" % "commons-net" % "2.0"
 )
 
 fork in run := true

@@ -1,46 +1,112 @@
 package edu.umass.cs.iesl.wikilink.retrieve
 
 import dispatch._
+import java.io._
 import org.apache.http.conn.HttpHostConnectException
 import java.util.zip.GZIPOutputStream
-import java.io._
 import edu.umass.cs.iesl.wikilink.google._
 import org.apache.http.client.ClientProtocolException
+import org.apache.commons.net.ftp.{FTPClient, FTPReply}
 
-// TODO: logging
 object Retrieve {
 
-  val h = new Http
 
-  def constructFilePath(i: Int): String = "TODO"
+  var baseOutputDir = ""
+  def constructFilePath(i: Int): String = {
+    baseOutputDir + "/" + i.toString
+  }
 
   def getOutputStream(file: String, id: Int): OutputStream =
     new GZIPOutputStream(new FileOutputStream(constructFilePath(id)))
 
+  def writeError(out: OutputStream, e: String): Unit = { out.write(e.getBytes) }
 
-  def downloadUrls(pages: WebpageIterator): Unit = {
-    pages.foreach(page => {
-      val out = getOutputStream(page.url, 0)
+  def getPage(x: (Webpage, Int), h: Http): Unit = {
+    val (page, i) = x
+
+    val out = getOutputStream(page.url, i)
+
+    if (page.url.contains("http://") || page.url.contains ("https://")) {
       try {
+
         h(url(page.url) >>> out)
+
       } catch {
-        // TODO: write files for errors
-        case _: HttpHostConnectException => println("skipping, host conn: " + page.url)
-        case _: ClientProtocolException => println("skipping, host conn: " + page.url)
+        case _: HttpHostConnectException => writeError(out, "!!!HTTP_HOST_CONNECT_EXCEPTION\t" + page.url)
+        case _: ClientProtocolException => writeError(out, "!!!CLIENT_PROTOCOL_EXCEPTION\t" + page.url)
         case e: StatusCode => {
           e.code match {
-            case 404 => println("skipping, 404 error: " + page.url)
+            case 404 => writeError(out, "!!!404\t" + page.url)
           }
         }
+        case _: IllegalArgumentException => writeError(out, "!!!ILLEGAL_ARGUMENT_EXCEPTION\t" + page.url)
       }
-      println("DONE: " + page.url)
+    }
+    else {
+      writeError(out, "!!!UNSUPPORTED_PROTOCOL\t" + page.url)
+    }
 
+    out.flush()
+    out.close()
+  }
+
+  def downloadUrls(pages: WebpageIterator): Unit = {
+    pages.zipWithIndex.sliding(100,100).toSeq.par.foreach(chunk => {
+      val h = new Http
+      chunk.foreach(getPage(_, h))
+      h.shutdown()
     })
-
   }
 
   def main(args : Array[String]): Unit = {
-    downloadUrls(new WebpageIterator(args(0), takeOnly = 10))
+    // arg0: data file
+    // arg1: output directory
+    // arg2: number of workers
+
+    collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(args(2).toInt)
+
+    baseOutputDir = args(1)
+    val iter = new WebpageIterator(args(0))
+    downloadUrls(iter)
   }
 
+}
+
+
+
+// not yet working
+object Ftp {
+
+  val ftp = new FTPClient()
+
+  def retrieveUrlAsInputStream(host: String, filePath: String): InputStream = {
+
+    var error = false
+    var stream: InputStream = null
+    try {
+      // connect
+      ftp.connect(host)
+      println("Connected to " + host + ".")
+      print(ftp.getReplyString)
+
+      // verify success
+      val reply = ftp.getReplyCode
+      if(FTPReply.isPositiveCompletion(reply))
+        stream = ftp.retrieveFileStream(filePath.drop(1))
+      else
+        println("FTP server refused connection.")
+
+      ftp.logout()
+    } catch {
+      case e: IOException => {
+        error = true;
+        e.printStackTrace();
+      }
+    }
+
+    if(ftp.isConnected)
+      try { ftp.disconnect() } catch { case _: IOException => () }
+
+    return stream
+  }
 }
