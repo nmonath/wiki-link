@@ -4,7 +4,7 @@ import java.io._
 import org.apache.commons.net.ftp.{FTPClient, FTPReply}
 
 // not yet working
-object Ftp {
+object FTP {
 
   val ftp = new FTPClient()
 

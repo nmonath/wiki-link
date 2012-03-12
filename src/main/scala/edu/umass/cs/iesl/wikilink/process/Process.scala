@@ -15,18 +15,15 @@ object Process {
   def getSource(file: String, id: Int): Source =
     Source.fromInputStream(new GZIPInputStream(new FileInputStream(constructFilePath(id))))
 
-  def getPage(x: (Webpage, Int)): Unit = {
+  def processPage(x: (Webpage, Int)): Unit = {
     val (page, i) = x
 
     val src = getSource(page.url, i)
 
     try {
 
-      
-
-
     } catch {
-
+      case _ => println("oops")
     }
 
   }
@@ -38,7 +35,7 @@ object Process {
   }
 
   def main(args : Array[String]): Unit = {
-    // arg0: data file
+    // arg0: data dir
     // arg1: output directory
     // arg2: number of workers
 
@@ -46,7 +43,7 @@ object Process {
 
     baseOutputDir = args(1)
     val iter = new WebpageIterator(args(0), takeOnly = 10000)
-    downloadUrls(iter)
+    processPages(iter)
   }
 
 }
