@@ -60,31 +60,48 @@ object Retrieve {
     out.flush()
     out.close()
   }
+  
 
-  def downloadUrls(pages: WebpageIterator): Unit = {
-    pages.zipWithIndex.sliding(100, 100).toSeq.par.foreach(chunk => {
-      val h = new Http
-      chunk.foreach(p => getPage(p._1, h))
-      h.shutdown()
+  def downloadUrls(pages: WebpageIterator, resume: Boolean): Unit = {
+
+    lazy val _progressWriter = new PrintWriter(new File(baseOutputDir + "/progress"))
+    def writeCompleteChunkId(i: Int): Unit = {
+      _progressWriter.synchronized {
+        _progressWriter.println(i.toString)
+        _progressWriter.flush()
+      }
+    }
+
+    val previouslyDownloaded = HashSet(io.Source.fromFile(baseOutputDir + "/progress").getLines().map(_.toInt).toSeq: _*)
+
+    // this is a seq of (chunk: Seq(page, pageId), chunkId)
+    pages.zipWithIndex.sliding(100, 100).zipWithIndex.toSeq.par.foreach(chunkAndId => {
+      val (chunk, chunkId) = chunkAndId
+      if (resume && previouslyDownloaded.contains(chunkId))
+        () // do nothing
+      else {
+        val h = new Http
+        chunk.foreach(p => getPage(p._1, h))
+        h.shutdown()
+        writeCompleteChunkId(chunkId)
+      }
     })
   }
 
   def main(args: Array[String]): Unit = {
-    // arg0: data file
-    // arg1: output directory
-    // arg2: number of workers
     val opts = CmdLine.parse(args)
     println(opts)
     val filename = opts.getOrElse("file", "/Users/sameer/tmp/input")
     val output = opts.getOrElse("output", "/Users/sameer/tmp/output")
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
     val workers = opts.getOrElse("workers", "100").toInt
+    val resume = opts.getOrElse("resume", "false").toBoolean
 
     collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
 
     baseOutputDir = output
     val iter = new WebpageIterator(filename, takeOnly)
-    downloadUrls(iter)
+    downloadUrls(iter, resume)
   }
 
 }
