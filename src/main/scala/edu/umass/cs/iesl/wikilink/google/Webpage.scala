@@ -12,10 +12,13 @@ import java.util.regex.Pattern
 case class RareWord(val word: String, val offset: Int)
 
 object RareWord {
-  def fromText(rareWordStr: String) = {
-    val index = rareWordStr.lastIndexOf(",")
-    assert(index != -1)
-    new RareWord(rareWordStr.substring(0, index), rareWordStr.substring(index + 1).toInt)
+  def fromText(rareWordStr: String): RareWord = {
+    val splits = rareWordStr.split("\\t")
+    assert(splits.length == 3, rareWordStr)
+    assert(splits(0) == Webpage.TOKEN, rareWordStr)
+    val text = splits(1)
+    val offset = splits(2).toInt
+    new RareWord(text, offset)
   }
 }
 
@@ -25,29 +28,19 @@ object Mention {
 
   val matcher = Pattern.compile(",[1-9][0-9]+,(s?http|ftp|file)").matcher("")
 
-  def fromText(mentionStr: String) = {
-    var m: Mention = null
-    try {
-      matcher.reset(mentionStr)
-      var start = -1
-      var end = -1
-      while (matcher.find) {
-        start = matcher.start
-        end = matcher.end + 1
-      }
-      assert(start > 0 && end > 0, "start and end not found : " + mentionStr)
-      assert(start < mentionStr.length() && end < mentionStr.length(), "start %d and end %d too large: %s (%d)".format(start, end, mentionStr, mentionStr.length()))
-      end = mentionStr.substring(0, end - 1).lastIndexOf(",")
-      //assert(mentionStr.substring(end - 5).startsWith("http")||mentionStr.substring(end - 5).startsWith("shttp"), "extracted %s from %s".format(mentionStr.substring(end - 5), mentionStr))
-      m = new Mention(mentionStr.substring(0, start), mentionStr.substring(start + 1, end).toInt, mentionStr.substring(end + 1))
-    } catch {
-      case e: Exception => println("Error when extracting from %s".format(mentionStr)); e.printStackTrace(); System.exit(1)
-    }
-    m
+  def fromText(mentionStr: String): Mention = {
+    val splits = mentionStr.split("\\t")
+    assert(splits.length == 4, mentionStr)
+    assert(splits(0) == Webpage.MENTION, mentionStr)
+    val text = splits(1)
+    val offset = splits(2).toInt
+    val wikiURL = splits(3)
+    new Mention(text, offset, wikiURL)
   }
 }
 
 class Webpage {
+  var id: Int = -1
   var url: String = null
   val mentions: ArrayBuffer[Mention] = new ArrayBuffer
   val rareWords: ArrayBuffer[RareWord] = new ArrayBuffer
@@ -56,21 +49,38 @@ class Webpage {
 }
 
 object Webpage {
-  def getNext(stream: BufferedReader): Webpage = {
-    val url = stream.readLine
-    val mentionsStr = stream.readLine
-    val rareWordsStr = stream.readLine
-    val mt1 = stream.readLine
-    assert(mt1.trim.length == 0)
-    val mt2 = stream.readLine
-    assert(mt1.trim.length == 0)
+  val URL = "URL"
+  val MENTION = "MENTION"
+  val TOKEN = "TOKEN"
+
+  def getNext(stream: BufferedReader, id: Int = -1): Webpage = {
+    val urlLine = stream.readLine.trim()
+    val urlSplits = urlLine.split("\\t")
+    assert(urlSplits.length == 2, urlLine)
+    assert(urlSplits(0).equals(URL), urlLine)
+    val url = urlSplits(1).trim
+    val mentionLines = new ArrayBuffer[String]
+    val wordLines = new ArrayBuffer[String]
+    var line = stream.readLine().trim
+    while(line != "") {
+      val splits = line.split("\\t")
+      splits(0) match {
+        case MENTION => mentionLines += line
+        case TOKEN => wordLines += line
+      }
+      line = stream.readLine()
+    }
+    // another line is empty
+    line = stream.readLine()
+    assert(line.trim.size == 0, line)
     // create the webpage
     val wp = new Webpage
     wp.url = url.trim
-    for (mentionStr <- mentionsStr.split("\t")) {
+    wp.id = id
+    for (mentionStr <- mentionLines) {
       wp.mentions += Mention fromText mentionStr
     }
-    for (rareWordStr <- rareWordsStr.split("\t")) {
+    for (rareWordStr <- wordLines) {
       wp.rareWords += RareWord fromText rareWordStr
     }
     wp
