@@ -6,10 +6,8 @@ import org.apache.http.conn.HttpHostConnectException
 import java.util.zip.GZIPOutputStream
 import edu.umass.cs.iesl.wikilink.google._
 import org.apache.http.client.ClientProtocolException
-import org.apache.commons.net.ftp.{FTPClient, FTPReply}
 
 object Retrieve {
-
 
   var baseOutputDir = ""
   def constructFilePath(i: Int): String = {
@@ -66,47 +64,9 @@ object Retrieve {
     collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(args(2).toInt)
 
     baseOutputDir = args(1)
-    val iter = new WebpageIterator(args(0))
+    val iter = new WebpageIterator(args(0), takeOnly = 10000)
     downloadUrls(iter)
   }
 
 }
 
-
-
-// not yet working
-object Ftp {
-
-  val ftp = new FTPClient()
-
-  def retrieveUrlAsInputStream(host: String, filePath: String): InputStream = {
-
-    var error = false
-    var stream: InputStream = null
-    try {
-      // connect
-      ftp.connect(host)
-      println("Connected to " + host + ".")
-      print(ftp.getReplyString)
-
-      // verify success
-      val reply = ftp.getReplyCode
-      if(FTPReply.isPositiveCompletion(reply))
-        stream = ftp.retrieveFileStream(filePath.drop(1))
-      else
-        println("FTP server refused connection.")
-
-      ftp.logout()
-    } catch {
-      case e: IOException => {
-        error = true;
-        e.printStackTrace();
-      }
-    }
-
-    if(ftp.isConnected)
-      try { ftp.disconnect() } catch { case _: IOException => () }
-
-    return stream
-  }
-}
