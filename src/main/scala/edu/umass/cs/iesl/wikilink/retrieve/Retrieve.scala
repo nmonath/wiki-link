@@ -64,20 +64,23 @@ object Retrieve {
 
   def downloadUrls(pages: WebpageIterator, resume: Boolean): Unit = {
 
-    lazy val _progressWriter = {
+    lazy val progressFile = { 
       val f = new File(baseOutputDir + "/progress")
-      f.createNewFile()
-      new PrintWriter(f)
+      if (!f.exists())
+        f.createNewFile()
+      f
     }
+
+    lazy val progressWriter = new PrintWriter(new FileWriter(progressFile, true))
+
+    lazy val previouslyDownloaded = HashSet(io.Source.fromFile(progressFile).getLines().map(_.toInt).toSeq: _*)
 
     def writeCompleteChunkId(i: Int): Unit = {
-      _progressWriter.synchronized {
-        _progressWriter.println(i.toString)
-        _progressWriter.flush()
+      progressWriter.synchronized {
+        progressWriter.println(i.toString)
+        progressWriter.flush()
       }
     }
-
-    val previouslyDownloaded = HashSet(io.Source.fromFile(baseOutputDir + "/progress").getLines().map(_.toInt).toSeq: _*)
 
     // this is a seq of (chunk: Seq(page, pageId), chunkId)
     pages.zipWithIndex.sliding(100, 100).zipWithIndex.toSeq.par.foreach(chunkAndId => {
