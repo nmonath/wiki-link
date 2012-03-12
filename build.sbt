@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
      "junit" % "junit" % "4.8.1",
      "net.databinder" %% "dispatch-http" % "0.8.8",
      "cc.refectorie.user.sameer" % "util" % "1.1-SNAPSHOT",
-     "commons-net" % "commons-net" % "2.0"
+     "commons-net" % "commons-net" % "2.0", // this is for FTP support and is currently not used.
+     "org.ccil.cowan.tagsoup" % "tagsoup" % "1.2"
 )
 
 fork in run := true
