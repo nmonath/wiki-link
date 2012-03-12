@@ -88,7 +88,8 @@ object Retrieve {
         val h = new Http
         chunk.foreach(p => getPage(p._1, h))
         h.shutdown()
-        writeCompleteChunkId(chunkId)
+        if (resume)
+          writeCompleteChunkId(chunkId)
       }
     })
   }
@@ -105,6 +106,8 @@ object Retrieve {
     collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
 
     baseOutputDir = output
+    new File(baseOutputDir).mkdirs()
+
     val iter = new WebpageIterator(filename, takeOnly)
     downloadUrls(iter, resume)
   }
