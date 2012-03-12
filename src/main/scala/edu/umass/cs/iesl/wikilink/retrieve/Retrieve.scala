@@ -64,7 +64,12 @@ object Retrieve {
 
   def downloadUrls(pages: WebpageIterator, resume: Boolean): Unit = {
 
-    lazy val _progressWriter = new PrintWriter(new File(baseOutputDir + "/progress"))
+    lazy val _progressWriter = {
+      val f = new File(baseOutputDir + "/progress")
+      f.createNewFile()
+      new PrintWriter(f)
+    }
+
     def writeCompleteChunkId(i: Int): Unit = {
       _progressWriter.synchronized {
         _progressWriter.println(i.toString)
