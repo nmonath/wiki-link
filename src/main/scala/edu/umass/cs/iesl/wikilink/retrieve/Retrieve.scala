@@ -7,6 +7,7 @@ import java.util.zip.GZIPOutputStream
 import edu.umass.cs.iesl.wikilink.google._
 import org.apache.http.client.ClientProtocolException
 import cc.refectorie.user.sameer.util.CmdLine
+import collection.mutable.HashSet
 
 /**
  * @author brian, sameer
@@ -22,7 +23,7 @@ object Retrieve {
     val name = ((i % 1e3)).toInt
     val dir = "%s/%03d/%03d/".format(baseOutputDir, firstDir, secondDir)
     new File(dir).mkdirs()
-    "%s%03d".format(dir, name)
+    "%s%03d".format(dir, name) + ".gz"
   }
 
   def getOutputStream(page: Webpage): OutputStream =
