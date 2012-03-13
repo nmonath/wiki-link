@@ -2,6 +2,7 @@ package edu.umass.cs.iesl.wikilink.retrieve
 
 import dispatch._
 import java.io._
+import java.net.{UnknownHostException, SocketException}
 import org.apache.http.conn.HttpHostConnectException
 import org.apache.commons.io.IOUtils
 import java.util.zip.GZIPOutputStream
@@ -56,6 +57,7 @@ object Retrieve {
   
   def getPage(page: Webpage, http: Http): Unit = {
     val out = getOutputStream(page)
+    println(constructFilePath(page))
 
     if (page.url.contains("http://") || page.url.contains("https://")) {
       try {
@@ -70,18 +72,19 @@ object Retrieve {
         else
           writeContentType(page, contentType.get)
 
-        // TODO: handle content-type
-
       } catch {
         case _: HttpHostConnectException => writeError(out, "!!!HTTP_HOST_CONNECT_EXCEPTION\t" + page.url)
         case _: ClientProtocolException => writeError(out, "!!!CLIENT_PROTOCOL_EXCEPTION\t" + page.url)
+        case _: UnknownHostException => writeError(out, "!!!UNKOWN_HOST_EXCEPTION\t" + page.url)
+        case _: SocketException => writeError(out, "!!!SOCKET_EXCEPTION\t" + page.url)
         case e: StatusCode => {
           e.code match {
             case 404 => writeError(out, "!!!404\t" + page.url)
           }
         }
         case _: IllegalArgumentException => writeError(out, "!!!ILLEGAL_ARGUMENT_EXCEPTION\t" + page.url)
-        case e: Exception => e.printStackTrace(); writeError(out, e.getStackTrace.mkString("\n"))
+        case e: Exception => { e.printStackTrace(); writeError(out, page.url + "\n" + e.getStackTrace.mkString("\n")) }
+        case _ => { writeError(out, "!!!UNIDENTIFIED_ERROR\t" + page.url)}
       }
     }
     else {
