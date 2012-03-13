@@ -82,9 +82,10 @@ object Retrieve {
         case _: UnknownHostException => writeError(out, "!!!UNKOWN_HOST_EXCEPTION\t" + page.url)
         case _: SocketException => writeError(out, "!!!SOCKET_EXCEPTION\t" + page.url)
         case e: StatusCode => {
-          e.code match {
-            case 404 => writeError(out, "!!!404\t" + page.url)
-          }
+          if (e.code == 404)
+            writeError(out, "!!!STATUS_CODE_404\t" + page.url)
+          else
+            writeError(out, "!!!STATUS_CODE_"+e+"\t" + page.url)
         }
         case _: IllegalArgumentException => writeError(out, "!!!ILLEGAL_ARGUMENT_EXCEPTION\t" + page.url)
         case e: Exception => { e.printStackTrace(); writeError(out, page.url + "\n" + e.getStackTrace.mkString("\n")) }
