@@ -121,19 +121,18 @@ object Retrieve {
       }
     }
 
-    // this is a seq of (chunk: Seq(page, pageId), chunkId)
-    pages.zipWithIndex.sliding(100, 100).zipWithIndex.toSeq.par.foreach(chunkAndId => {
-      val (chunk, chunkId) = chunkAndId
+    var chunkId = 0
+    while (pages.hasNext) {
+      val chunk = pages.take(1000).toSeq
       if (resume && previouslyDownloaded.contains(chunkId))
         () // do nothing
       else {
-        val h = new Http
-        chunk.foreach(p => getPage(p._1, h))
-        h.shutdown()
+        chunk.par.foreach { p: Webpage => { val h = new Http; getPage(p, h); h.shutdown() } }
         if (resume)
           writeCompleteChunkId(chunkId)
       }
-    })
+      chunkId += 1
+    }
   }
 
   def main(args: Array[String]): Unit = {
