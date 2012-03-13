@@ -10,6 +10,9 @@ import edu.umass.cs.iesl.wikilink.google._
 import org.apache.http.client.ClientProtocolException
 import cc.refectorie.user.sameer.util.CmdLine
 import collection.mutable.{HashSet, HashMap}
+import actors.Actor
+import actors.Actor._
+import actors.Futures.future
 
 /**
  * @author brian, sameer
@@ -43,20 +46,22 @@ object Retrieve {
   def writeError(out: OutputStream, e: String): Unit = {
     out.write(e.getBytes)
   }
-  
-  // kinda sloppy (inefficient, and file streams aren't closed)
+
+  // could put an actor here
   val contentWriters = new HashMap[String, FileWriter]
   def writeContentType(page: Webpage, contentType: String): Unit = {
-    val outputDir = constructDirectoryPath(page)
-    val out = contentWriters.getOrElseUpdate(
-      outputDir, 
-      { val f = new File(outputDir + "/content")
-        if (!f.exists())
-          f.createNewFile()
-        new FileWriter(f, true) // append = true
-      })
-    out.append(constructFileName(page) + "\t" + contentType + "\n")
-    out.flush()
+    contentWriters.synchronized {
+      val outputDir = constructDirectoryPath(page)
+      val out = contentWriters.getOrElseUpdate(
+        outputDir,
+        { val f = new File(outputDir + "/content")
+          if (!f.exists())
+            f.createNewFile()
+          new FileWriter(f, true) // append = true
+        })
+      out.append(constructFileName(page) + "\t" + contentType + "\n")
+      out.flush()
+    }
   }
   
   def getPage(page: Webpage, http: Http): Unit = {
@@ -101,7 +106,8 @@ object Retrieve {
   }
   
 
-  def downloadUrls(pages: WebpageIterator, resume: Boolean): Unit = {
+  // resume is actually trackProgress
+  def downloadUrls(pages: WebpageIterator, workers: Int, resume: Boolean): Unit = {
 
     lazy val progressFile = { 
       val f = new File(baseOutputDir + "/progress")
@@ -110,29 +116,40 @@ object Retrieve {
       f
     }
 
+    case class WriteInt(i: Int)
     lazy val progressWriter = new PrintWriter(new FileWriter(progressFile, true))
+    lazy val progressActor: Actor = actor { loop { react { case WriteInt(i) => progressWriter.write(i.toString + "\n") } } }
 
     lazy val previouslyDownloaded = HashSet(io.Source.fromFile(progressFile).getLines().map(_.toInt).toSeq: _*)
-
-    def writeCompleteChunkId(i: Int): Unit = {
-      progressWriter.synchronized {
-        progressWriter.println(i.toString)
-        progressWriter.flush()
+    
+    case class Next()
+    val iteratorActor = actor {
+      loop {
+        react {
+          case Next() => reply(pages.take(100))
+        }
       }
     }
 
-    var chunkId = 0
-    while (pages.hasNext) {
-      val chunk = pages.take(1000).toSeq
-      if (resume && previouslyDownloaded.contains(chunkId))
-        () // do nothing
-      else {
-        chunk.par.foreach { p: Webpage => { val h = new Http; getPage(p, h); h.shutdown() } }
-        if (resume)
-          writeCompleteChunkId(chunkId)
+    def workerDownloadLoop() {
+      val h = new Http
+      while (true) {
+        val result = (iteratorActor !? Next()).asInstanceOf[Iterator[Webpage]]
+        if (result.isEmpty) {
+          h.shutdown()
+          return
+        }
+
+        for (page <- pages) {
+          getPage(page, h)
+          if (resume)
+            progressActor ! WriteInt(page.id)
+        }
       }
-      chunkId += 1
     }
+
+    val fs = (1 to workers).map{ i => future { workerDownloadLoop() } }
+    fs.foreach { f => f() }
   }
 
   def main(args: Array[String]): Unit = {
@@ -150,7 +167,7 @@ object Retrieve {
     new File(baseOutputDir).mkdirs()
 
     val iter = new WebpageIterator(filename, takeOnly)
-    downloadUrls(iter, resume)
+    downloadUrls(iter, workers, resume)
   }
 
 }
