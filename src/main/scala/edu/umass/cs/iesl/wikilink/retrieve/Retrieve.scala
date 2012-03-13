@@ -34,7 +34,7 @@ object FilePath {
     "%03d".format((page.id % 1e3).toInt)
 
   def constructFilePath(page: Webpage): String =
-    constructDirectoryPath(page) + "/" + constructFileName(page)
+    constructDirectoryPath(page) + constructFileName(page)
 }
 
 object Retrieve {
@@ -117,16 +117,20 @@ object Retrieve {
     }
 
     case class WriteInt(i: Int)
-    lazy val progressWriter = new PrintWriter(new FileWriter(progressFile, true))
-    lazy val progressActor: Actor = actor { loop { react { case WriteInt(i) => progressWriter.write(i.toString + "\n") } } }
+    val progressWriter = new PrintWriter(new FileWriter(progressFile, true))
+    val progressActor: Actor = actor { loop { react { case WriteInt(i) => progressWriter.write(i.toString + "\n") } } }
 
     lazy val previouslyDownloaded = HashSet(io.Source.fromFile(progressFile).getLines().map(_.toInt).toSeq: _*)
     
     case class Next()
+    var chunkId = 0
     val iteratorActor = actor {
       loop {
         react {
-          case Next() => reply(pages.take(100))
+          case Next() => {
+            reply((chunkId, pages.take(100)))
+            chunkId += 1
+          }
         }
       }
     }
@@ -134,17 +138,24 @@ object Retrieve {
     def workerDownloadLoop() {
       val h = new Http
       while (true) {
-        val result = (iteratorActor !? Next()).asInstanceOf[Iterator[Webpage]]
-        if (result.isEmpty) {
+        val (chunkId, pages) = (iteratorActor !? Next()).asInstanceOf[(Int, Iterator[Webpage])]
+
+        if (pages.isEmpty) {
           h.shutdown()
           return
         }
 
         for (page <- pages) {
-          getPage(page, h)
-          if (resume)
-            progressActor ! WriteInt(page.id)
+          try {
+            getPage(page, h)
+          }
+          catch {
+            case _ => println("!!!unknown failure on " + page.id)
+          }
         }
+
+        if (resume)
+          progressActor ! WriteInt(chunkId)
       }
     }
 
