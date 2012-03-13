@@ -14,10 +14,10 @@ import collection.mutable.{HashSet, HashMap}
 /**
  * @author brian, sameer
  */
-object Retrieve {
 
+object FilePath {
   var baseOutputDir = ""
-  
+
   def constructDirectoryPath(page: Webpage): String = {
     var i = page.id
     val firstDir = (i / 1e6).toInt
@@ -26,12 +26,16 @@ object Retrieve {
     new File(dir).mkdirs()
     dir
   }
-  
+
   def constructFileName(page: Webpage): String =
     "%03d".format((page.id % 1e3).toInt)
 
   def constructFilePath(page: Webpage): String =
     constructDirectoryPath(page) + "/" + constructFileName(page)
+}
+
+object Retrieve {
+  import FilePath._
 
   def getOutputStream(page: Webpage): OutputStream =
     new GZIPOutputStream(new FileOutputStream(constructFilePath(page)))
