@@ -3,11 +3,12 @@ package edu.umass.cs.iesl.wikilink.retrieve
 import dispatch._
 import java.io._
 import org.apache.http.conn.HttpHostConnectException
+import org.apache.commons.io.IOUtils
 import java.util.zip.GZIPOutputStream
 import edu.umass.cs.iesl.wikilink.google._
 import org.apache.http.client.ClientProtocolException
 import cc.refectorie.user.sameer.util.CmdLine
-import collection.mutable.HashSet
+import collection.mutable.{HashSet, HashMap}
 
 /**
  * @author brian, sameer
@@ -15,16 +16,21 @@ import collection.mutable.HashSet
 object Retrieve {
 
   var baseOutputDir = ""
-
-  def constructFilePath(page: Webpage): String = {
+  
+  def constructDirectoryPath(page: Webpage): String = {
     var i = page.id
     val firstDir = (i / 1e6).toInt
     val secondDir = ((i % 1e6) / 1e3).toInt
-    val name = ((i % 1e3)).toInt
     val dir = "%s/%03d/%03d/".format(baseOutputDir, firstDir, secondDir)
     new File(dir).mkdirs()
-    "%s%03d".format(dir, name) + ".gz"
+    dir
   }
+  
+  def constructFileName(page: Webpage): String =
+    "%03d".format((page.id % 1e3).toInt)
+
+  def constructFilePath(page: Webpage): String =
+    constructDirectoryPath(page) + "/" + constructFileName(page)
 
   def getOutputStream(page: Webpage): OutputStream =
     new GZIPOutputStream(new FileOutputStream(constructFilePath(page)))
@@ -32,14 +38,39 @@ object Retrieve {
   def writeError(out: OutputStream, e: String): Unit = {
     out.write(e.getBytes)
   }
-
-  def getPage(page: Webpage, h: Http): Unit = {
+  
+  // kinda sloppy (inefficient, and file streams aren't closed)
+  val contentWriters = new HashMap[String, FileWriter]
+  def writeContentType(page: Webpage, contentType: String): Unit = {
+    val outputDir = constructDirectoryPath(page)
+    val out = contentWriters.getOrElseUpdate(
+      outputDir, 
+      { val f = new File(outputDir + "/content")
+        if (!f.exists())
+          f.createNewFile()
+        new FileWriter(f, true) // append = true
+      })
+    out.append(constructFileName(page) + "\t" + contentType + "\n")
+    out.flush()
+  }
+  
+  def getPage(page: Webpage, http: Http): Unit = {
     val out = getOutputStream(page)
 
     if (page.url.contains("http://") || page.url.contains("https://")) {
       try {
+        val contentType: Option[String] =
+          http(url(page.url) >+ { r =>
+            (r >:> { h => h("Content-Type").headOption },
+             r >> { in => out.write(IOUtils.toByteArray(in)) })
+          })._1
+        
+        if (contentType == None)
+          writeContentType(page, "None")
+        else
+          writeContentType(page, contentType.get)
 
-        h(url(page.url) >>> out)
+        // TODO: handle content-type
 
       } catch {
         case _: HttpHostConnectException => writeError(out, "!!!HTTP_HOST_CONNECT_EXCEPTION\t" + page.url)
