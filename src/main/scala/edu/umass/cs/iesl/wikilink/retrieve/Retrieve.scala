@@ -9,10 +9,10 @@ import java.util.zip.GZIPOutputStream
 import edu.umass.cs.iesl.wikilink.google._
 import org.apache.http.client.ClientProtocolException
 import cc.refectorie.user.sameer.util.CmdLine
-import collection.mutable.{HashSet, HashMap}
 import actors.Actor
 import actors.Actor._
 import actors.Futures.future
+import collection.mutable.{ArrayBuffer, HashSet, HashMap}
 
 /**
  * @author brian, sameer
@@ -134,7 +134,13 @@ object Retrieve {
       loop {
         react {
           case Next() => {
-            reply((chunkId, pages.take(100)))
+            val a = new ArrayBuffer[Webpage]
+            var i = 0
+            while (i < 100 && pages.hasNext) {
+              a + pages.next()
+              i += 1
+            }
+            reply((chunkId, a.iterator))
             chunkId += 1
           }
         }
@@ -143,13 +149,14 @@ object Retrieve {
 
     def workerDownloadLoop() {
       while (true) {
-        val (chunkId, pages) = (iteratorActor !? Next()).asInstanceOf[(Int, Iterator[Webpage])]
+        val (chunkId, ps) = (iteratorActor !? Next()).asInstanceOf[(Int, Iterator[Webpage])]
 
-        if (pages.isEmpty)
+        if (ps.isEmpty)
           return
 
+        println("contains " + chunkId + "? " + previouslyDownloaded.contains(chunkId))
         if (!previouslyDownloaded.contains(chunkId)) {
-          for (page <- pages) {
+          for (page <- ps) {
             val h = new Http
             getPage(page, h)
             h.shutdown()
