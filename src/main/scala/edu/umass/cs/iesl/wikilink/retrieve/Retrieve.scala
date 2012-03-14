@@ -106,21 +106,21 @@ object Retrieve {
   }
   
 
-  // resume is actually trackProgress
-  def downloadUrls(pages: WebpageIterator, workers: Int, resume: Boolean): Unit = {
-
-    lazy val progressFile = { 
-      val f = new File(baseOutputDir + "/progress")
-      if (!f.exists())
-        f.createNewFile()
-      f
-    }
+  def downloadUrls(pages: WebpageIterator, workers: Int): Unit = {
 
     case class WriteInt(i: Int)
-    val progressWriter = new PrintWriter(new FileWriter(progressFile, true))
+    val progressFilePath = baseOutputDir + "/progress"
+    val progressWriter = new PrintWriter(new FileWriter(baseOutputDir, true))
     val progressActor: Actor = actor { loop { react { case WriteInt(i) => progressWriter.write(i.toString + "\n") } } }
 
-    lazy val previouslyDownloaded = HashSet(io.Source.fromFile(progressFile).getLines().map(_.toInt).toSeq: _*)
+    val previouslyDownloaded = {
+      try {
+        HashSet(io.Source.fromFile(progressFilePath).getLines().map(_.toInt).toSeq: _*)
+      }
+      catch {
+        case _ => new HashSet[Int]
+      }
+    }
     
     case class Next()
     var chunkId = 0
@@ -128,7 +128,7 @@ object Retrieve {
       loop {
         react {
           case Next() => {
-            reply((chunkId, pages.take(100)))
+            reply((chunkId, pages.take(10)))
             chunkId += 1
           }
         }
@@ -136,7 +136,6 @@ object Retrieve {
     }
 
     def workerDownloadLoop() {
-      val h = new Http
       while (true) {
         val (chunkId, pages) = (iteratorActor !? Next()).asInstanceOf[(Int, Iterator[Webpage])]
 
@@ -145,17 +144,16 @@ object Retrieve {
           return
         }
 
-        for (page <- pages) {
-          try {
+        if (!previouslyDownloaded.contains(chunkId)) {
+          for (page <- pages) {
+            val h = new Http
             getPage(page, h)
+            h.shutdown()
           }
-          catch {
-            case _ => println("!!!unknown failure on " + page.id)
-          }
-        }
 
-        if (resume)
+          println("sending progress message: " + chunkId)
           progressActor ! WriteInt(chunkId)
+        }
       }
     }
 
@@ -170,7 +168,6 @@ object Retrieve {
     val output = opts.getOrElse("output", "/Users/sameer/tmp/output")
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
     val workers = opts.getOrElse("workers", "100").toInt
-    val resume = opts.getOrElse("resume", "false").toBoolean
 
     collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
 
@@ -178,7 +175,7 @@ object Retrieve {
     new File(baseOutputDir).mkdirs()
 
     val iter = new WebpageIterator(filename, takeOnly)
-    downloadUrls(iter, workers, resume)
+    downloadUrls(iter, workers)
   }
 
 }
