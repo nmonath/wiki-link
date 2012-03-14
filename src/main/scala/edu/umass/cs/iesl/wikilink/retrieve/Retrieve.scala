@@ -180,7 +180,7 @@ object Retrieve {
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
     val workers = opts.getOrElse("workers", "100").toInt
 
-    //collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
+    collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
 
     baseOutputDir = output
     new File(baseOutputDir).mkdirs()
