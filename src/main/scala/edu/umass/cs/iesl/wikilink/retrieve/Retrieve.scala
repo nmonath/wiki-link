@@ -110,8 +110,14 @@ object Retrieve {
 
     case class WriteInt(i: Int)
     val progressFilePath = baseOutputDir + "/progress"
-    val progressWriter = new PrintWriter(new FileWriter(baseOutputDir, true))
-    val progressActor: Actor = actor { loop { react { case WriteInt(i) => progressWriter.write(i.toString + "\n") } } }
+    val progressWriter = new PrintWriter(new FileWriter(progressFilePath, true))
+    val progressActor: Actor = actor {
+      loop {
+        react {
+          case WriteInt(i) => { progressWriter.write(i.toString + "\n"); progressWriter.flush() }
+        }
+      }
+    }
 
     val previouslyDownloaded = {
       try {
@@ -128,7 +134,7 @@ object Retrieve {
       loop {
         react {
           case Next() => {
-            reply((chunkId, pages.take(10)))
+            reply((chunkId, pages.take(100)))
             chunkId += 1
           }
         }
@@ -139,10 +145,8 @@ object Retrieve {
       while (true) {
         val (chunkId, pages) = (iteratorActor !? Next()).asInstanceOf[(Int, Iterator[Webpage])]
 
-        if (pages.isEmpty) {
-          h.shutdown()
+        if (pages.isEmpty)
           return
-        }
 
         if (!previouslyDownloaded.contains(chunkId)) {
           for (page <- pages) {
@@ -156,7 +160,7 @@ object Retrieve {
         }
       }
     }
-
+    
     val fs = (1 to workers).map{ i => future { workerDownloadLoop() } }
     fs.foreach { f => f() }
   }
@@ -169,7 +173,7 @@ object Retrieve {
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
     val workers = opts.getOrElse("workers", "100").toInt
 
-    collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
+    //collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
 
     baseOutputDir = output
     new File(baseOutputDir).mkdirs()
