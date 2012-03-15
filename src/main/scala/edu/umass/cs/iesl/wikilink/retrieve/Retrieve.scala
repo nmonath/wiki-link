@@ -179,8 +179,9 @@ object Retrieve {
     val output = opts.getOrElse("output", "/Users/sameer/tmp/output")
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
     val workers = opts.getOrElse("workers", "100").toInt
+    val threads = opts.getOrElse("threads", "30").toInt
 
-    collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
+    collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(threads)
 
     baseOutputDir = output
     new File(baseOutputDir).mkdirs()
