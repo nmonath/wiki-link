@@ -15,23 +15,30 @@ object FilePath {
 object Process {
   import FilePath._
 
+  val parser = XML.withSAXParser((new SAXFactoryImpl).newSAXParser())
+
   // print the wikipedia links by first projecting to <p> then to <a>
   def processPage(page: Webpage): Unit = {
-    val parser = XML.withSAXParser((new SAXFactoryImpl).newSAXParser())
     try {
       val contentStream = getPageContentStream(page)
       val ns = parser.load(contentStream)
-      ns \\ "a"
-      println(ns)
-    } catch {
-      case e => { e.printStackTrace(); System.exit(0) }
-    }
+
+      (ns \\ "p").foreach { p =>
+        (p \\ "a").map(a => (a.text, a.attribute("href"))).filter({
+          case (_, Some(href)) => href.text.contains("wikipedia.org")
+          case (_, None)       => false
+        }).foreach { case (anchorText, href) => println("%s (%d, %d) --> %s %s".format(href.get.text, 0, 0, anchorText, p.text)) }
+      }
+
+    } catch { case _ => () }
   }
 
   def main(args : Array[String]): Unit = {
     val opts = CmdLine.parse(args)
     println(opts)
-    val input = opts.getOrElse("input", "/Users/sameer/tmp/input")
+    args.foreach(println(_))
+    val dataFile = opts.getOrElse("dataset", "")
+    val pagesDir = opts.getOrElse("pages", "/Users/sameer/tmp/input")
     val output = opts.getOrElse("output", "/Users/sameer/tmp/process-output")
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
     val workers = opts.getOrElse("workers", "100").toInt
@@ -39,8 +46,8 @@ object Process {
 
     collection.parallel.ForkJoinTasks.defaultForkJoinPool.setParallelism(workers)
 
-    baseContentDir = args(1)
-    val pages = new WebpageIterator(args(0), takeOnly = 10)
+    baseContentDir = pagesDir
+    val pages = new WebpageIterator(dataFile, takeOnly = takeOnly)
     for (page <- pages)
       processPage(page)
   }

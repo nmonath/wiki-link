@@ -113,9 +113,10 @@
                   <id>process</id>
                   <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
                   <args>
-                      <arg>--input=${basedir}/../retrieve/pages</arg>
-                      <arg>--output=${basedir}/../process</arg>
-                      <arg>--take=1</arg>
+                      <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
+                      <arg>@pages=${basedir}/../retrieve/pages</arg>
+                      <arg>@output=${basedir}/../process</arg>
+                      <arg>@take=100</arg>
                   </args>
               </launcher>
           </launchers>
