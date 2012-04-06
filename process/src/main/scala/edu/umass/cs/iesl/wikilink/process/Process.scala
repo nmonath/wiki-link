@@ -112,3 +112,38 @@ object WriteToJSON {
   }
 
 }
+
+object AverageContextSize {
+  import PageSerialization._
+
+  def process(numToProcess: Int): Double = {
+    var totalLength = 0
+    var totalMentions = 0
+
+    for (i <- 0 to numToProcess) {
+      getJsonString(i) match {
+        case None       =>
+        case Some(json) => {
+          val page = readJson[Page](json)
+          totalMentions += page.mentions.length
+          for (mention <- page.mentions)
+            totalLength += mention.context.left.length() + mention.context.right.length + mention.text.length
+        }
+      }
+    }
+
+    totalLength * 1.0 / totalMentions
+  }
+
+  def main(args : Array[String]): Unit = {
+    val opts = CmdLine.parse(args)
+    println(opts)
+    args.foreach(println(_))
+    val jsonDir = opts.getOrElse("json", "../json")
+    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
+    
+    baseJsonDir = jsonDir
+    println(process(takeOnly))
+  }
+
+}
