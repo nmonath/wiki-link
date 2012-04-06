@@ -24,17 +24,17 @@
     <repository>
       <id>third.iesl.cs.umass.edu</id>
       <name>IESL 3rd party repository</name>
-      <url>http://iesl.cs.umass.edu:8081/nexus/content/repositories/thirdparty/</url>
+      <url>https://dev-iesl.cs.umass.edu/nexus/content/repositories/thirdparty/</url>
     </repository>
     <repository>
       <id>iesl.cs.umass.edu</id>
       <name>IESL release repository</name>
-      <url>http://iesl.cs.umass.edu:8081/nexus/content/repositories/releases/</url>
+      <url>https://dev-iesl.cs.umass.edu/nexus/content/repositories/releases/</url>
     </repository>
     <repository>
       <id>snapshot.iesl.cs.umass.edu</id>
       <name>IESL snapshot repository</name>
-      <url>http://iesl.cs.umass.edu:8081/nexus/content/repositories/snapshots/</url>
+      <url>https://dev-iesl.cs.umass.edu/nexus/content/repositories/snapshots/</url>
     </repository>
   </repositories>
 
@@ -52,16 +52,21 @@
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
     </dependency>
-      <dependency>
-          <groupId>org.ccil.cowan.tagsoup</groupId>
-          <artifactId>tagsoup</artifactId>
-          <version>1.2</version>
-      </dependency>
-      <dependency>
-          <groupId>cc.refectorie.user.sameer</groupId>
-          <artifactId>util</artifactId>
-          <version>1.1-SNAPSHOT</version>
-      </dependency>
+    <dependency>
+      <groupId>org.ccil.cowan.tagsoup</groupId>
+      <artifactId>tagsoup</artifactId>
+      <version>1.2</version>
+    </dependency>
+    <dependency>
+      <groupId>cc.refectorie.user.sameer</groupId>
+      <artifactId>util</artifactId>
+      <version>1.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>net.liftweb</groupId>
+      <artifactId>lift-json_2.9.1</artifactId>
+      <version>2.4</version>
+    </dependency>
 
       <!-- Test -->
     <dependency>
