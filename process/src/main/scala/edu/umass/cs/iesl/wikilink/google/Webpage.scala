@@ -39,12 +39,7 @@ object Mention {
   }
 }
 
-class Webpage {
-  var id: Int = -1
-  var url: String = null
-  val mentions: ArrayBuffer[Mention] = new ArrayBuffer
-  val rareWords: ArrayBuffer[RareWord] = new ArrayBuffer
-
+case class Webpage(val id: Int,  val url: String, val mentions: Seq[Mention], val rareWords: Seq[RareWord]) {
   override def toString = "url:\t%s\nmentions:\n%s\nwords:\n%s".format(url, mentions.mkString("\t", "\n\t", ""), rareWords.mkString("\t", "\n\t", ""))
 }
 
@@ -70,19 +65,14 @@ object Webpage {
       }
       line = stream.readLine()
     }
+
     // another line is empty
     line = stream.readLine()
     assert(line.trim.size == 0, line)
+
     // create the webpage
-    val wp = new Webpage
-    wp.url = url.trim
-    wp.id = id
-    for (mentionStr <- mentionLines) {
-      wp.mentions += Mention fromText mentionStr
-    }
-    for (rareWordStr <- wordLines) {
-      wp.rareWords += RareWord fromText rareWordStr
-    }
-    wp
+    val mentions = mentionLines.map(Mention.fromText(_))
+    val rare = wordLines.map(RareWord.fromText(_))
+    new Webpage(id, url.trim, mentions, rare)
   }
 }
