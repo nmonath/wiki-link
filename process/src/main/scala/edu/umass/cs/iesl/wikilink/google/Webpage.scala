@@ -1,7 +1,7 @@
 package edu.umass.cs.iesl.wikilink.google
 
 import collection.mutable.ArrayBuffer
-import java.io.{BufferedReader, FileReader, Reader, InputStream}
+import java.io.BufferedReader
 import java.util.regex.Pattern
 
 /**

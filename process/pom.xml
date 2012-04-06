@@ -115,13 +115,22 @@
         <configuration>
           <launchers>
               <launcher>
-                  <id>process</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
+                  <id>write-json</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.WriteToJSON</mainClass>
                   <args>
                       <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
+                      <arg>@json=${basedir}/json</arg>
                       <arg>@pages=${basedir}/../retrieve/pages</arg>
                       <arg>@output=${basedir}/../process</arg>
-                      <arg>@take=100</arg>
+                      <arg>@take=1000</arg>
+                  </args>
+              </launcher>
+              <launcher>
+                  <id>avg-context</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.AverageContextSize</mainClass>
+                  <args>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@take=1000</arg>
                   </args>
               </launcher>
           </launchers>

@@ -10,28 +10,53 @@ package edu.umass.cs.iesl.wikilink.process
 import java.io._
 import xml.XML
 import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
-import edu.umass.cs.iesl.wikilink.google._
+import edu.umass.cs.iesl.wikilink.google.{Webpage, WebpageIterator, RareWord}
 import cc.refectorie.user.sameer.util.CmdLine
 import net.liftweb.json._
-import net.liftweb.json.Serialization.{read, write}
+import net.liftweb.json.Serialization.{write => writeJson, read => readJson}
 import collection.mutable.ArrayBuffer
 import collection.immutable.HashSet
 
 object PageSerialization {
+  var baseJsonDir = ""
+
   case class Context(left: String,  right: String)
-  case class PageWrapper(page: Webpage, contexts: Seq[Context])
+  case class Mention(text: String, url: String, context: Context)
+  case class Page(id: Int, mentions: Seq[Mention], rareWords: Seq[RareWord])
+
+  def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000)
+
+  def writeToFile(page: Page): Unit = {
+    // make the enlosing directory
+    val dir = new File(baseJsonDir + "/%06d".format(page.id / 1000))
+    if (!dir.exists()) dir.mkdirs()
+
+    // write the file
+    val out = new FileOutputStream(baseJsonDir + getPath(page.id))
+    out.write(writeJson(page).getBytes)
+    out.close()
+    println("Wrote page to : " + baseJsonDir + getPath(page.id))
+  }
+
+  def getJsonString(id: Int): Option[String] = {
+    val f = new File(baseJsonDir + getPath(id))
+    if (f.exists())
+      Some(io.Source.fromFile(f).mkString)
+    else
+      None
+  }
+
+  implicit val formats = Serialization.formats(NoTypeHints)
 }
 
-object Process {
+object WriteToJSON {
   import PageSerialization._
 
   var baseContentDir = ""
   def getPageContentStream(page: Webpage): InputStream =
-    new FileInputStream("%s/%06d/%d".format(baseContentDir, page.id / 1000, page.id % 1000))
+    new FileInputStream(baseContentDir + getPath(page.id))
 
   val parser = XML.withSAXParser((new SAXFactoryImpl).newSAXParser())
-
-  implicit val formats = Serialization.formats(NoTypeHints) //ShortTypeHints(List(classOf[Mention], classOf[RareWord])))
 
   // print the wikipedia links by first projecting to <p> then to <a>
   def processPage(page: Webpage): Unit = {
@@ -40,7 +65,7 @@ object Process {
       val contentStream = getPageContentStream(page)
       val ns = parser.load(contentStream)
       val mentionUrls = HashSet[String](page.mentions.map(_.wikiURL): _*)
-      val contexts = ArrayBuffer[Context]()
+      val mentions = ArrayBuffer[Mention]()
 
       (ns \\ "p").foreach { p =>
         (p \\ "a").
@@ -53,13 +78,16 @@ object Process {
               val anchorOffset = p.text.indexOf(text)
               val left = p.text.substring(0, anchorOffset)
               val right = p.text.substring(anchorOffset + text.length)
-              contexts append new Context(left, right)
+              mentions append new Mention(text, href.get.text, new Context(left, right))
             }
           }
         }
 
-      println(write(new PageWrapper(page, contexts)))
-      
+      if (mentions.length > 0) {
+        //println(writeJson(new Page(page.id, mentions, page.rareWords)))
+        writeToFile(new Page(page.id, mentions, page.rareWords))
+      }
+
     } catch { case _ => () }
   }
 
@@ -69,9 +97,15 @@ object Process {
     args.foreach(println(_))
     val dataFile = opts.getOrElse("dataset", "../retrieve/wikilink-dataset.dat")
     val pagesDir = opts.getOrElse("pages", "../retrieve/pages")
+    val jsonDir = opts.getOrElse("json", "../json")
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
 
+    val json = new File(jsonDir)
+    if (!json.exists())
+      json.mkdirs()
+
     baseContentDir = pagesDir
+    baseJsonDir = jsonDir
     val pages = new WebpageIterator(dataFile, takeOnly = takeOnly)
     for (page <- pages)
       processPage(page)
