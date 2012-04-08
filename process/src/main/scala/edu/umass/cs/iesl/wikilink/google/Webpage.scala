@@ -61,7 +61,7 @@ object Webpage {
       val splits = line.split("\\t")
       splits(0) match {
         case MENTION => mentionLines += line
-        case TOKEN => wordLines += line
+        case TOKEN   => wordLines += line
       }
       line = stream.readLine()
     }

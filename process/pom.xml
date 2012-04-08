@@ -67,6 +67,11 @@
       <artifactId>lift-json_2.9.1</artifactId>
       <version>2.4</version>
     </dependency>
+    <dependency>
+        <groupId>net.debasishg</groupId>
+        <artifactId>redisclient_2.9.1</artifactId>
+        <version>2.4.2</version>
+    </dependency>
 
       <!-- Test -->
     <dependency>
@@ -115,22 +120,46 @@
         <configuration>
           <launchers>
               <launcher>
-                  <id>write-json</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.WriteToJSON</mainClass>
+                  <id>write-json-redis-master</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
                   <args>
                       <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
-                      <arg>@json=${basedir}/json</arg>
                       <arg>@pages=${basedir}/../retrieve/pages</arg>
-                      <arg>@output=${basedir}/../process</arg>
-                      <arg>@take=1000</arg>
+                      <arg>@take=10000</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=master</arg>
                   </args>
               </launcher>
               <launcher>
-                  <id>avg-context</id>
+                  <id>write-json-redis-slave</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
+                  <args>
+                      <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
+                      <arg>@pages=${basedir}/../retrieve/pages</arg>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@take=10000</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=slave</arg>
+                  </args>
+              </launcher>
+              <launcher>
+                  <id>avg-context-master</id>
                   <mainClass>edu.umass.cs.iesl.wikilink.process.AverageContextSize</mainClass>
                   <args>
                       <arg>@json=${basedir}/json</arg>
-                      <arg>@take=1000</arg>
+                      <arg>@take=10000</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=master</arg>
+                  </args>
+              </launcher>
+              <launcher>
+                  <id>avg-context-slave</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.AverageContextSize</mainClass>
+                  <args>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@take=10000</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=slave</arg>
                   </args>
               </launcher>
           </launchers>

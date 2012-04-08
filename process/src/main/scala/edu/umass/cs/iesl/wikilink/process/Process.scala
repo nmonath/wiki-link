@@ -1,69 +1,147 @@
 package edu.umass.cs.iesl.wikilink.process
 
-/*
- * Process downloaded HTML files.
- *
- * @author Brian Martin
- * @date 4/5/2012
+import cc.refectorie.user.sameer.util.CmdLine
+import edu.umass.cs.iesl.wikilink.google.{Webpage, WebpageIterator, RareWord}
+import com.redis.RedisClient
+import com.redis.serialization.Parse.Implicits.parseInt
+import net.liftweb.json._
+import net.liftweb.json.Serialization.{write, read}
+import collection.mutable.{ArrayBuffer, HashSet}
+import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
+import xml.factory.XMLLoader
+import xml.{Elem, XML}
+import java.io.{File, FileInputStream, PrintWriter}
+
+/**
+ * Author: martin
+ * Date: 4/8/12
  */
 
-import java.io._
-import xml.XML
-import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
-import edu.umass.cs.iesl.wikilink.google.{Webpage, WebpageIterator, RareWord}
-import cc.refectorie.user.sameer.util.CmdLine
-import net.liftweb.json._
-import net.liftweb.json.Serialization.{write => writeJson, read => readJson}
-import collection.mutable.ArrayBuffer
-import collection.immutable.HashSet
-
-object PageSerialization {
-  var baseJsonDir = ""
-
-  case class Context(left: String,  right: String)
+object ProcessedPageFormat {
+  case class Context(left: String,  right: String, full: String)
   case class Mention(text: String, url: String, context: Context)
   case class Page(id: Int, mentions: Seq[Mention], rareWords: Seq[RareWord])
+  case class PagesChunk(pages: Seq[Page])
+}
 
-  def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000)
-
-  def writeToFile(page: Page): Unit = {
-    // make the enlosing directory
-    val dir = new File(baseJsonDir + "/%06d".format(page.id / 1000))
-    if (!dir.exists()) dir.mkdirs()
-
-    // write the file
-    val out = new FileOutputStream(baseJsonDir + getPath(page.id))
-    out.write(writeJson(page).getBytes)
-    out.close()
-    println("Wrote page to : " + baseJsonDir + getPath(page.id))
-  }
-
-  def getJsonString(id: Int): Option[String] = {
-    val f = new File(baseJsonDir + getPath(id))
-    if (f.exists())
-      Some(io.Source.fromFile(f).mkString)
-    else
-      None
-  }
-
+object Unjsonify {
+  def apply[T <: AnyRef](s: String)(implicit m: Manifest[T]): T = read[T](s)
   implicit val formats = Serialization.formats(NoTypeHints)
 }
 
-object WriteToJSON {
-  import PageSerialization._
+object Jsonify {
+  def apply[T <: AnyRef](t: T): String = write(t)
+  implicit val formats = Serialization.formats(NoTypeHints)
+}
 
-  var baseContentDir = ""
-  def getPageContentStream(page: Webpage): InputStream =
-    new FileInputStream(baseContentDir + getPath(page.id))
+object Process {
 
-  val parser = XML.withSAXParser((new SAXFactoryImpl).newSAXParser())
+  // keys
+  val ORIG_PAGES         = "orig-pages"
+  val ORIG_PAGES_MAX_IDX = "orig-pages-max-idx"
+  val CHUNK_LIST         = "chunk-list"
+  val FAILED_CHUNK_LIST  = "failed-chunk-list"
+  val CHUNK_SIZE         = "chunk-length"
+  val KILL               = "kill"
+
+  var pagesDir = ""
+
+  def main(args: Array[String]): Unit = {
+    val opts = CmdLine.parse(args)
+    println(opts)
+    val dataFile = opts.getOrElse("dataset", "../retrieve/wikilink-dataset.dat")
+    val _pagesDir = opts.getOrElse("pages", "../retrieve/pages")
+    val jsonPath = opts.getOrElse("json", "../pages.json")
+    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
+    val chunkSize = opts.getOrElse("chunk", 1000.toString).toInt
+    val redisAddr = opts.getOrElse("redis", "localhost:6379")
+    val role      = opts.getOrElse("role", "slave")
+
+    pagesDir = _pagesDir
+
+    val (host, port) = redisAddr.splitAt(redisAddr.indexOf(":"))
+    val redis = new RedisClient(host, port.drop(1).toInt)
+
+    role match {
+      case "master" => {
+        val pages = new WebpageIterator(dataFile, takeOnly = takeOnly)
+        val numWritten = populateRedisWithPages(redis, pages)
+        populateRedisWithChunks(redis, chunkSize, maxIdx = numWritten)
+      }
+      case "slave" => {
+        val chunkSize = redis.get[Int](CHUNK_SIZE).get
+        val maxIdx = redis.get[Int](ORIG_PAGES_MAX_IDX).get
+        while (!redis.exists(KILL)) {
+          redis.lpop[Int](CHUNK_LIST) match {
+            case None => System.exit(0) // no more chunks
+            case Some(chunkIdx) => {
+              try {
+                processChunk(chunkIdx, chunkSize, maxIdx, jsonPath, pagesDir, redis)
+              }
+              catch {
+                case e => {
+                  redis.lpush(FAILED_CHUNK_LIST, chunkIdx)
+                  e.printStackTrace()
+                  System.exit(0)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  def populateRedisWithPages(redis: RedisClient, pages: WebpageIterator, keyPrefix: String = "page"): Int = {
+    var i = -1
+    for (page <- pages) {
+      redis.hset(ORIG_PAGES, page.id, Jsonify(page))
+      i += 1
+    }
+    redis.set(ORIG_PAGES_MAX_IDX, i)
+    i
+  }
+  
+  def populateRedisWithChunks(redis: RedisClient, chunkSize: Int, maxIdx: Int) {
+    redis.set(CHUNK_SIZE, chunkSize)
+
+    val numChunks = {
+      val fullChunks = (maxIdx / chunkSize)
+      fullChunks + { if (maxIdx % chunkSize > 0) 1 else 0 }
+    }
+    
+    for (i <- 0 until numChunks)
+      redis.rpush(CHUNK_LIST, i)
+
+    assert(redis.llen(CHUNK_LIST).get == numChunks, "numChunks: %d; maxIdx: %d; chunkSize: %d".format(numChunks, maxIdx, chunkSize))
+  }
+
+  def processChunk(chunkIdx: Int, chunkSize: Int, maxIdx: Int, jsonPath: String, pagesDir: String, redis: RedisClient) {
+    val writer = new PrintWriter(jsonPath + "/%06d.json".format(chunkIdx))
+    val parser = XML.withSAXParser((new SAXFactoryImpl).newSAXParser())
+    val startIdx = chunkIdx * chunkSize
+    val endIdx   = math.min(startIdx + chunkSize, maxIdx)
+    for (i <- startIdx until endIdx) {
+      val page = Unjsonify[Webpage](redis.hget[String](ORIG_PAGES, i).get)
+      val jsonStr = processPage(page, parser)
+      if (jsonStr != "")
+        writer.println(jsonStr)
+    }
+    writer.close()
+  }
 
   // print the wikipedia links by first projecting to <p> then to <a>
-  def processPage(page: Webpage): Unit = {
+  def processPage(page: Webpage, parser: XMLLoader[Elem]): String = {
+    import ProcessedPageFormat._
 
-    try {
-      val contentStream = getPageContentStream(page)
-      val ns = parser.load(contentStream)
+    def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000)
+    def getContentStream = new FileInputStream(pagesDir + getPath(page.id))
+
+    val cs = getContentStream
+
+    val res = try {
+      val ns = parser.load(cs)
+
       val mentionUrls = HashSet[String](page.mentions.map(_.wikiURL): _*)
       val mentions = ArrayBuffer[Mention]()
 
@@ -78,72 +156,123 @@ object WriteToJSON {
               val anchorOffset = p.text.indexOf(text)
               val left = p.text.substring(0, anchorOffset)
               val right = p.text.substring(anchorOffset + text.length)
-              mentions append new Mention(text, href.get.text, new Context(left, right))
+              mentions append new Mention(text, href.get.text, new Context(left, right, left + text + right))
+          }
+        }
+      }
+
+      Jsonify(new Page(page.id, mentions, page.rareWords))
+
+    } catch { case _ => "" }
+
+    cs.close()
+    res
+  }
+
+}
+
+trait ProcessJson {
+  import ProcessedPageFormat._
+
+  val name: String
+  def processPage(p: Page): String
+  def aggregatePages(ss: Seq[String]): String
+  def aggregateChunks(ss: Seq[String]): String
+  
+  lazy val JSON_LIST        = name + "-json-list"
+  lazy val RESULT_LIST      = name + "-json-result-list"
+  lazy val FAILED_JSON_LIST = name + "-failed-json-list"
+  lazy val RUNNING_WORKERS  = name + "-workers"
+  lazy val KILL             = name + "-kill"
+
+  def main(args: Array[String]): Unit = {
+    val opts = CmdLine.parse(args)
+    println(opts)
+    val jsonPath = opts.getOrElse("json", "../pages.json")
+    val outputFile = opts.getOrElse("output", name + ".out")
+    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
+    val redisAddr = opts.getOrElse("redis", "localhost:6379")
+    val role      = opts.getOrElse("role", "master")
+
+    val (host, port) = redisAddr.splitAt(redisAddr.indexOf(":"))
+    val redis = new RedisClient(host, port.drop(1).toInt)
+
+    role match {
+      case "master" => { 
+        populateRedisWithJsonFilePaths(redis, jsonPath, takeOnly) 
+      }
+      case "slave" => {
+        redis.lpush(RUNNING_WORKERS, 1)
+        while (!redis.exists(KILL)) {
+          redis.lpop[String](JSON_LIST) match {
+            case None => {
+              if (redis.llen(RUNNING_WORKERS).get == 1) {
+                println("writing file")
+                val writer = new PrintWriter(outputFile)
+                val strings = redis.lrange[String](RESULT_LIST, 0, redis.llen(RESULT_LIST).get).get.map(_.get).toArray.toSeq // redis returns an option of options
+                writer.println(aggregateChunks(strings))
+                writer.close()
+              }
+              redis.lpop[Int](RUNNING_WORKERS)
+              System.exit(0)
+            }
+            case Some(jsonFilePath) => {
+              try {
+                val pages = Unjsonify[PagesChunk](io.Source.fromFile(jsonFilePath).mkString)
+                val aggregate = aggregatePages(pages.pages.map(processPage(_)))
+                redis.rpush(RESULT_LIST, aggregate)
+              }
+              catch {
+                case e => {
+                  redis.lpush(FAILED_JSON_LIST, jsonFilePath)
+                  println(e.getMessage)
+//                  redis.lpop[Int](RUNNING_WORKERS, 1)
+//                  System.exit(0)
+                }
+              }
             }
           }
         }
-
-      if (mentions.length > 0) {
-        //println(writeJson(new Page(page.id, mentions, page.rareWords)))
-        writeToFile(new Page(page.id, mentions, page.rareWords))
-      }
-
-    } catch { case _ => () }
-  }
-
-  def main(args : Array[String]): Unit = {
-    val opts = CmdLine.parse(args)
-    println(opts)
-    args.foreach(println(_))
-    val dataFile = opts.getOrElse("dataset", "../retrieve/wikilink-dataset.dat")
-    val pagesDir = opts.getOrElse("pages", "../retrieve/pages")
-    val jsonDir = opts.getOrElse("json", "../json")
-    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
-
-    val json = new File(jsonDir)
-    if (!json.exists())
-      json.mkdirs()
-
-    baseContentDir = pagesDir
-    baseJsonDir = jsonDir
-    val pages = new WebpageIterator(dataFile, takeOnly = takeOnly)
-    for (page <- pages)
-      processPage(page)
-  }
-
-}
-
-object AverageContextSize {
-  import PageSerialization._
-
-  def process(numToProcess: Int): Double = {
-    var totalLength = 0
-    var totalMentions = 0
-
-    for (i <- 0 to numToProcess) {
-      getJsonString(i) match {
-        case None       =>
-        case Some(json) => {
-          val page = readJson[Page](json)
-          totalMentions += page.mentions.length
-          for (mention <- page.mentions)
-            totalLength += mention.context.left.length() + mention.context.right.length + mention.text.length
-        }
       }
     }
-
-    totalLength * 1.0 / totalMentions
   }
 
-  def main(args : Array[String]): Unit = {
-    val opts = CmdLine.parse(args)
-    println(opts)
-    args.foreach(println(_))
-    val jsonDir = opts.getOrElse("json", "../json")
-    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
-    
-    baseJsonDir = jsonDir
-    println(process(takeOnly))
+  def populateRedisWithJsonFilePaths(redis: RedisClient, jsonDir: String, maxIdx: Int) {
+    val f = new File(jsonDir)
+    assert(f.isDirectory)
+    for (jsonFile <- f.listFiles())
+      redis.rpush(JSON_LIST, jsonFile.getAbsolutePath)
   }
 
 }
+
+
+
+object AverageContextSize extends ProcessJson {
+  import ProcessedPageFormat._
+
+  case class Total(contextLength: Int, numMentions: Int)
+
+  val name = "avg-context-size"
+  def processPage(page: Page): String = {
+    Jsonify({
+      val res = new Total(
+        page.mentions.map(_.context.full.length).sum,
+        page.mentions.length )
+      println(res)
+      res
+    })
+  }
+
+  def aggregatePages(ss: Seq[String]): String = {
+    val totals = ss.map(Unjsonify[Total](_))
+    Jsonify(
+      new Total(
+        totals.map(_.contextLength).sum,
+        totals.map(_.numMentions  ).sum ))
+  }
+
+  def aggregateChunks(ss: Seq[String]): String =
+    aggregatePages(ss)
+}
+

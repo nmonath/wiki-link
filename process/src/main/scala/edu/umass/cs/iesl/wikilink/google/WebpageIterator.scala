@@ -10,7 +10,7 @@ import cc.refectorie.user.sameer.util.CmdLine
 
 class WebpageIterator(val filename: String, val takeOnly: Int = Int.MaxValue) extends Iterator[Webpage] {
   val reader = new BufferedReader(new FileReader(filename))
-  var count = 0
+  var count = -1
 
   def hasNext = {
     val bool = count < takeOnly && reader.ready
