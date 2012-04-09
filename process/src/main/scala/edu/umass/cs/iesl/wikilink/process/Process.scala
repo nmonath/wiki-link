@@ -30,7 +30,11 @@ object Unjsonify {
 }
 
 object Jsonify {
-  def apply[T <: AnyRef](t: T): String = write(t)
+  def apply[T <: AnyRef](t: T): String = {
+    val res = write(t)
+    println(res)
+    res
+  }
   implicit val formats = Serialization.formats(NoTypeHints)
 }
 
@@ -112,8 +116,6 @@ object Process {
     
     for (i <- 0 until numChunks)
       redis.rpush(CHUNK_LIST, i)
-
-    assert(redis.llen(CHUNK_LIST).get == numChunks, "numChunks: %d; maxIdx: %d; chunkSize: %d".format(numChunks, maxIdx, chunkSize))
   }
 
   def processChunk(chunkIdx: Int, chunkSize: Int, maxIdx: Int, jsonPath: String, pagesDir: String, redis: RedisClient) {
@@ -212,13 +214,14 @@ trait ProcessJson {
                 val strings = redis.lrange[String](RESULT_LIST, 0, redis.llen(RESULT_LIST).get).get.map(_.get).toArray.toSeq // redis returns an option of options
                 writer.println(aggregateChunks(strings))
                 writer.close()
+                redis.del(RESULT_LIST)
               }
               redis.lpop[Int](RUNNING_WORKERS)
               System.exit(0)
             }
             case Some(jsonFilePath) => {
               try {
-                val pages = Unjsonify[PagesChunk](io.Source.fromFile(jsonFilePath).mkString)
+                val pages = Unjsonify[PagesChunk]("""{"pages":[""" + io.Source.fromFile(jsonFilePath).getLines.mkString(",") + "]}")
                 val aggregate = aggregatePages(pages.pages.map(processPage(_)))
                 redis.rpush(RESULT_LIST, aggregate)
               }
@@ -247,7 +250,6 @@ trait ProcessJson {
 }
 
 
-
 object AverageContextSize extends ProcessJson {
   import ProcessedPageFormat._
 
@@ -255,24 +257,24 @@ object AverageContextSize extends ProcessJson {
 
   val name = "avg-context-size"
   def processPage(page: Page): String = {
-    Jsonify({
-      val res = new Total(
+    Jsonify(
+      new Total(
         page.mentions.map(_.context.full.length).sum,
-        page.mentions.length )
-      println(res)
-      res
-    })
+        page.mentions.length ))
   }
 
   def aggregatePages(ss: Seq[String]): String = {
     val totals = ss.map(Unjsonify[Total](_))
+    println("agg pages: " + totals)
     Jsonify(
       new Total(
         totals.map(_.contextLength).sum,
         totals.map(_.numMentions  ).sum ))
   }
 
-  def aggregateChunks(ss: Seq[String]): String =
+  def aggregateChunks(ss: Seq[String]): String = {
+    println("agg chunks: " + ss)
     aggregatePages(ss)
+  }
 }
 
