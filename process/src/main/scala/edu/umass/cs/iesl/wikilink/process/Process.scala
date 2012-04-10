@@ -329,7 +329,7 @@ object ContextWordCount extends ProcessJson {
   val name = "context-word-count"
   def processPage(page: Page): String = Jsonify(
     new WordCount(
-      HashMap[String, Int](page.mentions.flatMap(m => "\\w+".r.split(m.context.full)).map((_, 1)): _*)
+      HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.context.full)).map((_, 1)): _*)
     ))
   
   private def mergeHashMaps(a: HashMap[String,Int], b: HashMap[String,Int]): HashMap[String,Int] = {
