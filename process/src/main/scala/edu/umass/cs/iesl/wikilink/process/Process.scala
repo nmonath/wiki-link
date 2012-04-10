@@ -202,12 +202,13 @@ trait ProcessJson {
       case "master" => { 
         redis.del(JSON_LIST)
         redis.del(RESULT_LIST)
+        redis.del(FAILED_JSON_LIST)
         redis.del(RUNNING_WORKERS)
         populateRedisWithJsonFilePaths(redis, jsonPath, takeOnly) 
       }
       case "slave" => {
         redis.lpush(RUNNING_WORKERS, 1)
-        while (!redis.exists(RUNNING_WORKERS)) {
+        while (redis.exists(RUNNING_WORKERS)) { // running_workers does not exist when a master has been re-run
           redis.lpop[String](JSON_LIST) match {
             case None => {
               if (redis.llen(RUNNING_WORKERS).get == 1) {
