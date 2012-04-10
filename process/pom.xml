@@ -180,6 +180,24 @@
                       <arg>@role=slave</arg>
                   </args>
               </launcher>
+              <launcher>
+                  <id>context-word-count-master</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.ContextWordCount</mainClass>
+                  <args>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=master</arg>
+                  </args>
+              </launcher>
+              <launcher>
+                  <id>context-word-count-slave</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.ContextWordCount</mainClass>
+                  <args>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=slave</arg>
+                  </args>
+              </launcher>
           </launchers>
         </configuration>
       </plugin>

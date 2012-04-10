@@ -309,19 +309,40 @@ trait DefaultBinAggregation {
 }
 
 
-object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
-  import ProcessedPageFormat._
-  import AggregateToBins.Binnable
+import ProcessedPageFormat._
+import AggregateToBins.Binnable
 
+object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
   val name = "num-pages-with-mentions"
   def processPage(page: Page): String = Jsonify(Binnable(page.mentions.size, 1))
 }
 
 object ContextBins extends ProcessJson with DefaultBinAggregation {
-  import ProcessedPageFormat._
-  import AggregateToBins.Binnable
-
   val name = "context-bins"
   def processPage(page: Page): String = Jsonify(Binnable(page.mentions.size, 1))
+}
+
+object ContextWordCount extends ProcessJson {
+  
+  case class WordCount(wordCounts: HashMap[String, Int])
+  
+  val name = "context-word-count"
+  def processPage(page: Page): String = Jsonify(
+    new WordCount(
+      HashMap[String, Int](page.mentions.flatMap(m => "\\w+".r.split(m.context.full)).map((_, 1)): _*)
+    ))
+  
+  private def mergeHashMaps(a: HashMap[String,Int], b: HashMap[String,Int]): HashMap[String,Int] = {
+    b.foreach({ case (k,v) => a(k) += v})
+    a
+  }
+
+  def aggregatePages(ss: Seq[String]): String = Jsonify(new WordCount(
+      ss.map(Unjsonify[WordCount](_).wordCounts).
+        foldLeft(new HashMap[String, Int] { override def default(k: String) = 0 })(mergeHashMaps(_,_))
+    ))
+
+  def aggregateChunks(ss: Seq[String]): String = aggregatePages(ss)
+
 }
 
