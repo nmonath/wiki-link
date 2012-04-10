@@ -6,11 +6,11 @@ import com.redis.RedisClient
 import com.redis.serialization.Parse.Implicits.parseInt
 import net.liftweb.json._
 import net.liftweb.json.Serialization.{write, read}
-import collection.mutable.{ArrayBuffer, HashSet}
 import org.ccil.cowan.tagsoup.jaxp.SAXFactoryImpl
 import xml.factory.XMLLoader
 import xml.{Elem, XML}
 import java.io.{File, FileInputStream, PrintWriter}
+import collection.mutable.{HashMap, ArrayBuffer, HashSet}
 
 /**
  * Author: martin
@@ -185,7 +185,6 @@ trait ProcessJson {
   lazy val RESULT_LIST      = name + "-json-result-list"
   lazy val FAILED_JSON_LIST = name + "-failed-json-list"
   lazy val RUNNING_WORKERS  = name + "-workers"
-  lazy val KILL             = name + "-kill"
 
   def main(args: Array[String]): Unit = {
     val opts = CmdLine.parse(args)
@@ -201,11 +200,14 @@ trait ProcessJson {
 
     role match {
       case "master" => { 
+        redis.del(JSON_LIST)
+        redis.del(RESULT_LIST)
+        redis.del(RUNNING_WORKERS)
         populateRedisWithJsonFilePaths(redis, jsonPath, takeOnly) 
       }
       case "slave" => {
         redis.lpush(RUNNING_WORKERS, 1)
-        while (!redis.exists(KILL)) {
+        while (!redis.exists(RUNNING_WORKERS)) {
           redis.lpop[String](JSON_LIST) match {
             case None => {
               if (redis.llen(RUNNING_WORKERS).get == 1) {
@@ -229,8 +231,6 @@ trait ProcessJson {
                 case e => {
                   redis.lpush(FAILED_JSON_LIST, jsonFilePath)
                   println(e.getMessage)
-//                  redis.lpop[Int](RUNNING_WORKERS, 1)
-//                  System.exit(0)
                 }
               }
             }
@@ -276,5 +276,51 @@ object AverageContextSize extends ProcessJson {
     println("agg chunks: " + ss)
     aggregatePages(ss)
   }
+}
+
+object AggregateToBins {
+
+  case class Bin(bins: HashMap[Int, Int])
+  case class Binnable(binIdx: Int,  num: Int)
+
+  private def newBin = new Bin(new HashMap[Int,Int] { override def default(k: Int) = 0 })
+
+  def apply(xs: Seq[Binnable]): Bin = {
+    val bin = newBin
+    xs.foreach(b => bin.bins(b.binIdx) += b.num)
+    bin
+  }
+  
+  def apply[T <: Bin](xs: Seq[T])(implicit m: Manifest[T]): Bin =
+    new Bin(xs.foldLeft(newBin.bins)({
+      case (prev, next) => {
+        next.bins.foreach { case (k,v) => prev(k) += v }
+        prev
+      }}))
+
+}
+
+trait DefaultBinAggregation {
+  import AggregateToBins.{Bin, Binnable}
+
+  def aggregatePages(ss: Seq[String]): String = Jsonify(AggregateToBins(ss.map(Unjsonify[Binnable](_))))
+  def aggregateChunks(ss: Seq[String]): String = Jsonify(AggregateToBins(ss.map(Unjsonify[Bin](_))))
+}
+
+
+object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
+  import ProcessedPageFormat._
+  import AggregateToBins.Binnable
+
+  val name = "num-pages-with-mentions"
+  def processPage(page: Page): String = Jsonify(Binnable(page.mentions.size, 1))
+}
+
+object ContextBins extends ProcessJson with DefaultBinAggregation {
+  import ProcessedPageFormat._
+  import AggregateToBins.Binnable
+
+  val name = "context-bins"
+  def processPage(page: Page): String = Jsonify(Binnable(page.mentions.size, 1))
 }
 

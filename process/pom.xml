@@ -162,6 +162,26 @@
                       <arg>@role=slave</arg>
                   </args>
               </launcher>
+              <launcher>
+                  <id>num-pages-with-mentions-master</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.NumPagesWithMentions</mainClass>
+                  <args>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@take=10000</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=master</arg>
+                  </args>
+              </launcher>
+              <launcher>
+                  <id>num-pages-with-mentions-slave</id>
+                  <mainClass>edu.umass.cs.iesl.wikilink.process.NumPagesWithMentions</mainClass>
+                  <args>
+                      <arg>@json=${basedir}/json</arg>
+                      <arg>@take=10000</arg>
+                      <arg>@redis=avon4:63793</arg>
+                      <arg>@role=slave</arg>
+                  </args>
+              </launcher>
           </launchers>
         </configuration>
       </plugin>
