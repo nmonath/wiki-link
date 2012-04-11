@@ -244,8 +244,12 @@ trait ProcessJson {
   def populateRedisWithJsonFilePaths(redis: RedisClient, jsonDir: String, maxIdx: Int) {
     val f = new File(jsonDir)
     assert(f.isDirectory)
-    for (jsonFile <- f.listFiles())
+    var i = 0
+    for (jsonFile <- f.listFiles()) {
+      if (maxIdx > i) return
       redis.rpush(JSON_LIST, jsonFile.getAbsolutePath)
+      i += 1
+    }
   }
 
 }
