@@ -246,7 +246,7 @@ trait ProcessJson {
     assert(f.isDirectory)
     var i = 0
     for (jsonFile <- f.listFiles()) {
-      if (maxIdx > i) return
+      if (i > maxIdx) return
       redis.rpush(JSON_LIST, jsonFile.getAbsolutePath)
       i += 1
     }
@@ -285,10 +285,11 @@ object AverageContextSize extends ProcessJson {
 
 object AggregateToBins {
 
-  case class Bin(bins: HashMap[Int, Int])
+  case class Bin(bins: Map[Int, Int])
   case class Binnable(binIdx: Int,  num: Int)
 
-  private def newBin = new Bin(new HashMap[Int,Int] { override def default(k: Int) = 0 })
+  private def newMap = new HashMap[Int,Int] { override def default(k: Int) = 0 } toMap
+  private def newBin = new Bin(newMap)
 
   def apply(xs: Seq[Binnable]): Bin = {
     val bin = newBin
@@ -297,7 +298,7 @@ object AggregateToBins {
   }
   
   def apply[T <: Bin](xs: Seq[T])(implicit m: Manifest[T]): Bin =
-    new Bin(xs.foldLeft(newBin.bins)({
+    new Bin(xs.foldLeft(newMap)({
       case (prev, next) => {
         next.bins.foreach { case (k,v) => prev(k) += v }
         prev
@@ -328,22 +329,22 @@ object ContextBins extends ProcessJson with DefaultBinAggregation {
 
 object ContextWordCount extends ProcessJson {
   
-  case class WordCount(wordCounts: HashMap[String, Int])
+  case class WordCount(wordCounts: Map[String, Int]) // this has to be map for Jsonify purposes
   
   val name = "context-word-count"
   def processPage(page: Page): String = Jsonify(
     new WordCount(
-      HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.context.full)).map((_, 1)): _*)
+      HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.context.full)).map((_, 1)): _*).toMap
     ))
   
-  private def mergeHashMaps(a: HashMap[String,Int], b: HashMap[String,Int]): HashMap[String,Int] = {
+  private def mergeHashMaps(a: HashMap[String,Int], b: Map[String,Int]): HashMap[String,Int] = {
     b.foreach({ case (k,v) => a(k) += v})
     a
   }
 
   def aggregatePages(ss: Seq[String]): String = Jsonify(new WordCount(
       ss.map(Unjsonify[WordCount](_).wordCounts).
-        foldLeft(new HashMap[String, Int] { override def default(k: String) = 0 })(mergeHashMaps(_,_))
+        foldLeft(new HashMap[String, Int] { override def default(k: String) = 0 })(mergeHashMaps(_,_)).toMap
     ))
 
   def aggregateChunks(ss: Seq[String]): String = aggregatePages(ss)
