@@ -232,6 +232,7 @@ trait ProcessJson {
                 case e => {
                   redis.lpush(FAILED_JSON_LIST, jsonFilePath)
                   println(e.getMessage)
+                  println(e.getStackTraceString)
                 }
               }
             }
@@ -255,99 +256,60 @@ trait ProcessJson {
 }
 
 
-object AverageContextSize extends ProcessJson {
-  import ProcessedPageFormat._
-
-  case class Total(contextLength: Int, numMentions: Int)
-
-  val name = "avg-context-size"
-  def processPage(page: Page): String = {
-    Jsonify(
-      new Total(
-        page.mentions.map(_.context.full.length).sum,
-        page.mentions.length ))
-  }
-
-  def aggregatePages(ss: Seq[String]): String = {
-    val totals = ss.map(Unjsonify[Total](_))
-    println("agg pages: " + totals)
-    Jsonify(
-      new Total(
-        totals.map(_.contextLength).sum,
-        totals.map(_.numMentions  ).sum ))
-  }
-
-  def aggregateChunks(ss: Seq[String]): String = {
-    println("agg chunks: " + ss)
-    aggregatePages(ss)
-  }
-}
-
 object AggregateToBins {
 
-  case class Bin(bins: Map[Int, Int])
+  case class Bin(bins: Map[String, Int])
   case class Binnable(binIdx: Int,  num: Int)
 
-  private def newMap = new HashMap[Int,Int] { override def default(k: Int) = 0 } toMap
-  private def newBin = new Bin(newMap)
+  private def newHMap = new HashMap[String,Int] { override def default(k: String) = 0 }
 
-  def apply(xs: Seq[Binnable]): Bin = {
-    val bin = newBin
-    xs.foreach(b => bin.bins(b.binIdx) += b.num)
-    bin
+  def makeBin(xs: Seq[Binnable]): Bin = {
+    val hmap = newHMap
+    xs.foreach(b => hmap(b.binIdx.toString) += b.num)
+    new Bin(hmap.toMap)
   }
-  
-  def apply[T <: Bin](xs: Seq[T])(implicit m: Manifest[T]): Bin =
-    new Bin(xs.foldLeft(newMap)({
-      case (prev, next) => {
-        next.bins.foreach { case (k,v) => prev(k) += v }
-        prev
-      }}))
 
-}
-
-trait DefaultBinAggregation {
-  import AggregateToBins.{Bin, Binnable}
-
-  def aggregatePages(ss: Seq[String]): String = Jsonify(AggregateToBins(ss.map(Unjsonify[Binnable](_))))
-  def aggregateChunks(ss: Seq[String]): String = Jsonify(AggregateToBins(ss.map(Unjsonify[Bin](_))))
-}
-
-
-import ProcessedPageFormat._
-import AggregateToBins.Binnable
-
-object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
-  val name = "num-pages-with-mentions"
-  def processPage(page: Page): String = Jsonify(Binnable(page.mentions.size, 1))
-}
-
-object ContextBins extends ProcessJson with DefaultBinAggregation {
-  val name = "context-bins"
-  def processPage(page: Page): String = Jsonify(Binnable(page.mentions.size, 1))
-}
-
-object ContextWordCount extends ProcessJson {
-  
-  case class WordCount(wordCounts: Map[String, Int]) // this has to be map for Jsonify purposes
-  
-  val name = "context-word-count"
-  def processPage(page: Page): String = Jsonify(
-    new WordCount(
-      HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.context.full)).map((_, 1)): _*).toMap
-    ))
-  
   private def mergeHashMaps(a: HashMap[String,Int], b: Map[String,Int]): HashMap[String,Int] = {
     b.foreach({ case (k,v) => a(k) += v})
     a
   }
 
-  def aggregatePages(ss: Seq[String]): String = Jsonify(new WordCount(
-      ss.map(Unjsonify[WordCount](_).wordCounts).
-        foldLeft(new HashMap[String, Int] { override def default(k: String) = 0 })(mergeHashMaps(_,_)).toMap
-    ))
+  def mergeBins(xs: Seq[Bin]): Bin = new Bin(xs.map(_.bins).foldLeft(newHMap)(mergeHashMaps(_, _)).toMap)
 
-  def aggregateChunks(ss: Seq[String]): String = aggregatePages(ss)
+}
 
+trait DefaultBinAggregation {
+  import AggregateToBins.{Bin, Binnable}
+  def aggregatePages(ss: Seq[String]): String = Jsonify(AggregateToBins.makeBin(ss.map(Unjsonify[Binnable](_))))
+  def aggregateChunks(ss: Seq[String]): String = Jsonify(AggregateToBins.mergeBins(ss.map(Unjsonify[Bin](_))))
+}
+
+
+import ProcessedPageFormat._
+import AggregateToBins.{Binnable, Bin}
+
+object AverageContextSize extends ProcessJson with DefaultBinAggregation {
+  val name = "avg-context-size"
+  def processPage(page: Page): String =
+    Jsonify( new Binnable( page.mentions.map(_.context.full.length).sum, page.mentions.length ))
+}
+
+object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
+  val name = "num-pages-with-mentions"
+  def processPage(page: Page): String = Jsonify(new Binnable(page.mentions.size, 1))
+}
+
+object ContextBins extends ProcessJson with DefaultBinAggregation {
+  val name = "context-bins"
+  def processPage(page: Page): String = Jsonify(new Binnable(page.mentions.size, 1))
+}
+
+object ContextWordCount extends ProcessJson {
+  val name = "context-word-count"
+  def processPage(page: Page): String = Jsonify(
+    new Bin( HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.context.full)).map((_, 1)): _*).toMap ) )
+  
+  def aggregatePages(ss: Seq[String]): String = aggregateChunks(ss)
+  def aggregateChunks(ss: Seq[String]): String = Jsonify(AggregateToBins.mergeBins(ss.map(Unjsonify[Bin](_))))
 }
 
