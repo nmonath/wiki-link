@@ -10,5 +10,6 @@ else
   PAGES_DIR=$1
 fi
 
-find $PAGES_DIR/ -name "*" -type f | parallel --progress -j0 file -b -i > filetypes.dat
+# works with gzipped pages (-z)
+find $PAGES_DIR/ -name "*" -type f | parallel --progress -j0 file -b -i -z > filetypes.dat
 cat filetypes.dat | sort | uniq -c | sort > filetype_distribution.out
