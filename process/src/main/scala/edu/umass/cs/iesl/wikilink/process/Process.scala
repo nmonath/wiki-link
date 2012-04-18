@@ -11,6 +11,7 @@ import xml.factory.XMLLoader
 import xml.{Elem, XML}
 import java.io.{File, FileInputStream, PrintWriter}
 import collection.mutable.{HashMap, ArrayBuffer, HashSet}
+import java.util.zip.GZIPInputStream
 
 /**
  * Author: martin
@@ -136,8 +137,8 @@ object Process {
   def processPage(page: Webpage, parser: XMLLoader[Elem]): String = {
     import ProcessedPageFormat._
 
-    def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000)
-    def getContentStream = new FileInputStream(pagesDir + getPath(page.id))
+    def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000) + ".gz"
+    def getContentStream = new GZIPInputStream(new FileInputStream(pagesDir + getPath(page.id)))
 
     val cs = getContentStream
 
@@ -296,11 +297,6 @@ object AverageContextSize extends ProcessJson with DefaultBinAggregation {
 
 object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
   val name = "num-pages-with-mentions"
-  def processPage(page: Page): String = Jsonify(new Binnable(page.mentions.size, 1))
-}
-
-object ContextBins extends ProcessJson with DefaultBinAggregation {
-  val name = "context-bins"
   def processPage(page: Page): String = Jsonify(new Binnable(page.mentions.size, 1))
 }
 

@@ -11,14 +11,15 @@ mkdir -p $OUTPUT_DIR
 
 if [ ! -e "$LOG_DIR/complete" ]
 then
-	LINE_NUM=0
-	for line in `cat $1`
-	do
-	  wget --timeout=20 --tries=2 -o $LOG_DIR/$LINE_NUM -O $OUTPUT_DIR/$LINE_NUM $line
-	  ((LINE_NUM++))
-	done
+  LINE_NUM=0
+  for line in `cat $1`
+  do
+    wget --timeout=20 --tries=2 -o $LOG_DIR/$LINE_NUM -O $OUTPUT_DIR/$LINE_NUM $line
+    gzip $OUTPUT_DIR/$LINE_NUM
+    ((LINE_NUM++))
+  done
 
-	touch $LOG_DIR/complete
+  touch $LOG_DIR/complete
 else
-	echo "Skipping complete chunk:  " `basename $1`
+  echo "Skipping complete chunk:  " `basename $1`
 fi
