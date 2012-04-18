@@ -18,9 +18,9 @@ import collection.mutable.{HashMap, ArrayBuffer, HashSet}
  */
 
 object ProcessedPageFormat {
-  case class Context(left: String,  right: String, full: String)
-  case class Mention(text: String, url: String, context: Context)
-  case class Page(id: Int, mentions: Seq[Mention], rareWords: Seq[RareWord])
+  case class Context(text: String, left: String,  right: String) { def full: String = left + text + right }
+  case class Mention(url: String, context: Context)
+  case class Page(id: Int, url: String, mentions: Seq[Mention], rareWords: Seq[RareWord])
   case class PagesChunk(pages: Seq[Page])
 }
 
@@ -132,7 +132,7 @@ object Process {
     writer.close()
   }
 
-  // print the wikipedia links by first projecting to <p> then to <a>
+  // get the wikipedia links by first projecting to <p> then to <a>
   def processPage(page: Webpage, parser: XMLLoader[Elem]): String = {
     import ProcessedPageFormat._
 
@@ -144,7 +144,7 @@ object Process {
     val res = try {
       val ns = parser.load(cs)
 
-      val mentionUrls = HashSet[String](page.mentions.map(_.wikiURL): _*)
+      val mentionUrls = HashSet[String](page.mentions.map(_.url): _*)
       val mentions = ArrayBuffer[Mention]()
 
       (ns \\ "p").foreach { p =>
@@ -158,12 +158,12 @@ object Process {
               val anchorOffset = p.text.indexOf(text)
               val left = p.text.substring(0, anchorOffset)
               val right = p.text.substring(anchorOffset + text.length)
-              mentions append new Mention(text, href.get.text, new Context(left, right, left + text + right))
+              mentions append new Mention(href.get.text, new Context(text, left, right))
           }
         }
       }
 
-      Jsonify(new Page(page.id, mentions, page.rareWords))
+      Jsonify(new Page(page.id, page.url, mentions, page.rareWords))
 
     } catch { case _ => "" }
 

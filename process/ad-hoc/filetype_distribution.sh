@@ -10,5 +10,5 @@ else
   PAGES_DIR=$1
 fi
 
-find $PAGES_DIR/ -name "*" -type f | parallel -j0 file -b -i > filetypes.dat
+find $PAGES_DIR/ -name "*" -type f | parallel --progress -j0 file -b -i > filetypes.dat
 cat filetypes.dat | sort | uniq -c | sort > filetype_distribution.out

@@ -22,7 +22,7 @@ object RareWord {
   }
 }
 
-case class Mention(val text: String, val offset: Int, val wikiURL: String)
+case class Mention(val text: String, val offset: Int, val url: String)
 
 object Mention {
 

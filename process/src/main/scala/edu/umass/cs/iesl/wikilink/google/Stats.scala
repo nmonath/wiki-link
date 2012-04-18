@@ -61,8 +61,8 @@ object Stats {
     val anchorLowerTexts = new HashSet[String]
 
     def process(m: Mention) {
-      urls += m.wikiURL.replaceAll("^shttp","http")
-      paths += new URL(m.wikiURL.replaceAll("^shttp","http")).getPath
+      urls += m.url.replaceAll("^shttp","http")
+      paths += new URL(m.url.replaceAll("^shttp","http")).getPath
       anchorTexts += m.text
       anchorLowerTexts += m.text.toLowerCase
       num += 1
