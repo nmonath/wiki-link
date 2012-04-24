@@ -172,6 +172,39 @@ object Process {
         }
       }
 
+      // alternative if parsing the html didn't find the mentions
+      // the idea is simply to:
+      //   1. read the whole file in as a string
+      //   2. match the url
+      //   3. find the anchor text by matching the '>' of the <a> and the "</a>"
+      //   4. get a left context from before the url, and a right context from after the anchor text
+      if (mentions.size != prunedMentionUrls.size) {
+        val cs2 = getContentStream
+        val string = io.Source.fromInputStream(cs2).getLines().mkString("\n"); cs2.close()
+        val coveredUrls = mentions.map(_.url)
+        for ((prunedUrl, unprunedUrl) <- prunedToUnprunedUrls if (!coveredUrls.contains(unprunedUrl))) {
+          val urlIdx = string.indexOf(unprunedUrl)
+          if (urlIdx > -1) {
+            val beginAnchorText: Int = {
+              ">".r.findFirstMatchIn(string.drop(urlIdx)) match {
+                case Some(m) => m.end
+                case None => 0 // ???
+              }
+            }
+            val endAnchorText: Int = {
+              "</a>".r.findFirstMatchIn(string.drop(urlIdx)) match {
+                case Some(m) => m.start
+                case None => 0 // ???
+              }
+            }
+            val anchorText  = string.substring(beginAnchorText, endAnchorText)
+            val leftContext = string.substring(math.max(0, urlIdx - 300), urlIdx)
+            val rightContext = string.substring(math.min(endAnchorText, urlIdx + 300), string.length)
+            mentions append new Mention(unprunedUrl, new Context(anchorText, leftContext, rightContext, fromParser = false))
+          }
+        }
+      }
+
       Jsonify(new Page(page.id, page.url, mentions, page.rareWords))
 
     } catch { case _ => "" }
