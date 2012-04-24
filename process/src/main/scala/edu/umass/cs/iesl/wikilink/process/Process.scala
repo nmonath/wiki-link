@@ -19,7 +19,7 @@ import java.util.zip.GZIPInputStream
  */
 
 object ProcessedPageFormat {
-  case class Context(text: String, left: String,  right: String) { def full: String = left + text + right }
+  case class Context(text: String, left: String,  right: String, fromParser: Boolean = true) { def full: String = left + text + right }
   case class Mention(url: String, context: Context)
   case class Page(id: Int, url: String, mentions: Seq[Mention], rareWords: Seq[RareWord])
   case class PagesChunk(pages: Seq[Page])
@@ -133,26 +133,34 @@ object Process {
     writer.close()
   }
 
-  // get the wikipedia links by first projecting to <p> then to <a>
   def processPage(page: Webpage, parser: XMLLoader[Elem]): String = {
     import ProcessedPageFormat._
 
     def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000) + ".gz"
     def getContentStream = new GZIPInputStream(new FileInputStream(pagesDir + getPath(page.id)))
 
+    // this is necessary because sites might garbled urls like: <a href="//en.wikipedia...."> (that is, no "http:")
+    val prunedToUnprunedUrls = HashMap[String, String]()
+    def pruneUrl(url: String): String = {
+      val pruned = url.substring(url.indexOf("wikipedia.org"))
+      prunedToUnprunedUrls(pruned) = url
+      pruned
+    }
+
     val cs = getContentStream
 
     val res = try {
       val ns = parser.load(cs)
 
-      val mentionUrls = HashSet[String](page.mentions.map(_.url): _*)
+      val prunedMentionUrls = HashSet[String](page.mentions.map(m => pruneUrl(m.url)): _*)
       val mentions = ArrayBuffer[Mention]()
 
+      // first attempt to find the links and use paragraphs as the context
       (ns \\ "p").foreach { p =>
         (p \\ "a").
           map( a => (a.text, a.attribute("href"))).
           filter({
-            case (_, Some(href)) => { href.text.contains("wikipedia.org") && mentionUrls.contains(href.text) }
+            case (_, Some(href)) => { href.text.contains("wikipedia.org") && prunedMentionUrls.contains(pruneUrl(href.text)) }
             case (_, None)       => false }).
           foreach {
             case (text, href) => {
