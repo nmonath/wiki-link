@@ -1,6 +1,7 @@
 package edu.umass.cs.iesl.wikilink.process
 
 import cc.refectorie.user.sameer.util.CmdLine
+import edu.umass.cs.iesl.wikilink.google
 import edu.umass.cs.iesl.wikilink.google.{Webpage, WebpageIterator, RareWord}
 import com.redis.RedisClient
 import com.redis.serialization.Parse.Implicits.parseInt
@@ -19,9 +20,11 @@ import java.util.zip.GZIPInputStream
  */
 
 object ProcessedPageFormat {
-  case class Context(text: String, left: String,  right: String, fromParser: Boolean = true) { def full: String = left + text + right }
-  case class Mention(url: String, context: Context)
-  case class Page(id: Int, url: String, mentions: Seq[Mention], rareWords: Seq[RareWord])
+  case class ExtractedContext(text: String, left: String,  right: String, fromParser: Boolean = true) { def full: String = left + text + right }
+  case class GoogleMentionAnnotations(text: String, offset: Int)
+  case class Mention(url: String, extractedContext: ExtractedContext, googleAnnnotations: GoogleMentionAnnotations)
+  case class GooglePageAnnotations(rareWords: Seq[RareWord])
+  case class Page(id: Int, url: String, mentions: Seq[Mention], googleAnnotations: GooglePageAnnotations)
   case class PagesChunk(pages: Seq[Page])
 }
 
@@ -49,6 +52,8 @@ object Process {
   val CHUNK_SIZE         = "chunk-length"
   val KILL               = "kill"
 
+  val CONTEXT_RADIUS     = 300
+
   var pagesDir = ""
 
   def main(args: Array[String]): Unit = {
@@ -69,6 +74,8 @@ object Process {
 
     role match {
       case "master" => {
+        redis.del(ORIG_PAGES)
+        redis.del(ORIG_PAGES_MAX_IDX)
         val pages = new WebpageIterator(dataFile, takeOnly = takeOnly)
         val numWritten = populateRedisWithPages(redis, pages)
         populateRedisWithChunks(redis, chunkSize, maxIdx = numWritten)
@@ -139,21 +146,22 @@ object Process {
     def getPath(i: Int) = "/%06d/%d".format(i / 1000, i % 1000) + ".gz"
     def getContentStream = new GZIPInputStream(new FileInputStream(pagesDir + getPath(page.id)))
 
-    // this is necessary because sites might garbled urls like: <a href="//en.wikipedia...."> (that is, no "http:")
-    val prunedToUnprunedUrls = HashMap[String, String]()
-    def pruneUrl(url: String): String = {
-      val pruned = url.substring(url.indexOf("wikipedia.org"))
-      prunedToUnprunedUrls(pruned) = url
-      pruned
-    }
+    // pruning is necessary because sites might garbled urls like: <a href="//en.wikipedia...."> (that is, no "http:")
+    def pruneUrl(url: String): String = url.substring(url.indexOf("wikipedia.org"))
+    // track a mapping from full url's to the original mention (so we can add the "GoogleAnnotations" when creating mentions)
+    val prunedToMention = HashMap[String, google.Mention](page.mentions.map(m => (pruneUrl(m.url), m)): _*)
 
-    val cs = getContentStream
+    val csP = getContentStream
+    val csDiv = getContentStream
 
     val res = try {
-      val ns = parser.load(cs)
+      var ns = parser.load(csP)
 
       val prunedMentionUrls = HashSet[String](page.mentions.map(m => pruneUrl(m.url)): _*)
       val mentions = ArrayBuffer[Mention]()
+      val coveredUrls = new HashSet[String]
+
+      // TODO: maybe the following two loops and contentStreams could be merged.
 
       // first attempt to find the links and use paragraphs as the context
       (ns \\ "p").foreach { p =>
@@ -167,8 +175,47 @@ object Process {
               val anchorOffset = p.text.indexOf(text)
               val left = p.text.substring(0, anchorOffset)
               val right = p.text.substring(anchorOffset + text.length)
-              mentions append new Mention(href.get.text, new Context(text, left, right))
+              val prunedUrl = pruneUrl(href.get.text)
+              val originalMention = prunedToMention(prunedUrl)
+              if (!coveredUrls.contains(prunedUrl)) {
+                coveredUrls += prunedUrl
+                mentions append new Mention(
+                  href.get.text,
+                  new ExtractedContext(text, left, right),
+                  new GoogleMentionAnnotations(originalMention.text, originalMention.offset)
+                )
+              }
           }
+        }
+      }
+
+      // next attempt the same thing, but with div's not paragraphs
+      // (and chop off some of the context)
+      if (mentions.size != prunedMentionUrls.size) {
+        ns = parser.load(csDiv)
+        (ns \\ "div").reverse.foreach { div => // the reverse here encourages inner div's first
+          (div \\ "a").
+            map( a => (a.text, a.attribute("href"))).
+            filter({
+              case (_, Some(href)) => { href.text.contains("wikipedia.org") && prunedMentionUrls.contains(pruneUrl(href.text)) }
+              case (_, None)       => false }).
+            foreach {
+              case (text, href) => {
+                val anchorOffset = div.text.indexOf(text)
+                val left = div.text.substring(math.max(0,anchorOffset - CONTEXT_RADIUS), anchorOffset)
+                val right = div.text.substring(anchorOffset + text.length, math.min(anchorOffset + text.length + CONTEXT_RADIUS, div.text.length))
+                val prunedUrl = pruneUrl(href.get.text)
+                val originalMention = prunedToMention(prunedUrl)
+                if (!coveredUrls.contains(prunedUrl)) {
+                  coveredUrls += prunedUrl
+                  mentions append new Mention(
+                    href.get.text,
+                    new ExtractedContext(text, left, right),
+                    new GoogleMentionAnnotations(originalMention.text, originalMention.offset)
+                  )
+                }
+              }
+            }
         }
       }
 
@@ -181,8 +228,9 @@ object Process {
       if (mentions.size != prunedMentionUrls.size) {
         val cs2 = getContentStream
         val string = io.Source.fromInputStream(cs2).getLines().mkString("\n"); cs2.close()
-        val coveredUrls = mentions.map(_.url)
-        for ((prunedUrl, unprunedUrl) <- prunedToUnprunedUrls if (!coveredUrls.contains(unprunedUrl))) {
+        for ((prunedUrl, originalMention) <- prunedToMention if (!coveredUrls.contains(originalMention.url))) {
+          coveredUrls += prunedUrl
+          val unprunedUrl = originalMention.url
           val urlIdx = string.indexOf(unprunedUrl)
           if (urlIdx > -1) {
             val beginAnchorText: Int = {
@@ -198,18 +246,35 @@ object Process {
               }
             }
             val anchorText  = string.substring(beginAnchorText, endAnchorText)
-            val leftContext = string.substring(math.max(0, urlIdx - 300), urlIdx)
-            val rightContext = string.substring(math.min(endAnchorText, urlIdx + 300), string.length)
-            mentions append new Mention(unprunedUrl, new Context(anchorText, leftContext, rightContext, fromParser = false))
+            val leftContext = string.substring(math.max(0, urlIdx - CONTEXT_RADIUS), urlIdx)
+            val rightContext = string.substring(endAnchorText, math.min(urlIdx + CONTEXT_RADIUS, string.length))
+            val originalMention = prunedToMention(prunedUrl)
+            mentions append new Mention(
+              unprunedUrl,
+              new ExtractedContext(anchorText, leftContext, rightContext, fromParser = false),
+              new GoogleMentionAnnotations(originalMention.text, originalMention.offset)
+            )
           }
         }
       }
 
-      Jsonify(new Page(page.id, page.url, mentions, page.rareWords))
+      // add with blank extractedContent if none of the above worked
+      if (mentions.size != prunedMentionUrls.size) {
+        for ((prunedUrl, originalMention) <- prunedToMention if (!coveredUrls.contains(originalMention.url))) {
+          mentions append new Mention(
+            originalMention.url,
+            new ExtractedContext("", "", ""),
+            new GoogleMentionAnnotations(originalMention.text, originalMention.offset)
+          )
+        }
+      }
+
+      Jsonify(new Page(page.id, page.url, mentions, new GooglePageAnnotations(page.rareWords)))
 
     } catch { case _ => "" }
 
-    cs.close()
+    csP.close()
+    csDiv.close()
     res
   }
 
@@ -333,7 +398,7 @@ import AggregateToBins.{Binnable, Bin}
 object AverageContextSize extends ProcessJson with DefaultBinAggregation {
   val name = "avg-context-size"
   def processPage(page: Page): String =
-    Jsonify( new Binnable( page.mentions.map(_.context.full.length).sum, page.mentions.length ))
+    Jsonify( new Binnable( page.mentions.map(_.extractedContext.full.length).sum, page.mentions.length ))
 }
 
 object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
@@ -344,9 +409,47 @@ object NumPagesWithMentions extends ProcessJson with DefaultBinAggregation {
 object ContextWordCount extends ProcessJson {
   val name = "context-word-count"
   def processPage(page: Page): String = Jsonify(
-    new Bin( HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.context.full)).map((_, 1)): _*).toMap ) )
+    new Bin( HashMap[String, Int](page.mentions.flatMap(m => "\\s+".r.split(m.extractedContext.full)).map((_, 1)): _*).toMap ) )
   
   def aggregatePages(ss: Seq[String]): String = aggregateChunks(ss)
   def aggregateChunks(ss: Seq[String]): String = Jsonify(AggregateToBins.mergeBins(ss.map(Unjsonify[Bin](_))))
 }
 
+
+object ParserTest {
+  def main(args: Array[String]): Unit = {
+    val parser = XML.withSAXParser((new SAXFactoryImpl).newSAXParser())
+    val string = """
+      <div id="outer">
+        <div id="inner1">
+          <a href="http://en.wikipedia.org/wiki/College_Board" title="College Board">
+            <span style="color: windowtext; text-decoration: none; text-underline: none;">
+              College Board
+            </span>
+          </a>
+        </div>
+        <div id="inner2">
+          <a> inner2 link </a>
+        </div>
+      </div>
+      <div id="last">
+        <a> last link </a>
+      </div>
+    """
+    
+    val x = parser.loadString(string)
+
+    for (n <- x.child.iterator) {
+      println("----")
+      println(n)
+    }
+    
+//    (x \\ "div").reverse.foreach ( div => {
+//      (div \\ "a").foreach(a => {
+//        println("div.id: " + (div attribute "id"))
+//        println("a.text: " + a.text)
+//      })
+//    })
+
+  }
+}
