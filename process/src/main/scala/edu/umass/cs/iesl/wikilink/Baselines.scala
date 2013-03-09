@@ -3,14 +3,9 @@ package edu.umass.cs.iesl.wikilink
 import java.net.URL
 import edu.umass.cs.iesl.wikilink.google.{WebpageIterator, Mention}
 import cc.refectorie.user.sameer.util.{TimeUtil, CmdLine}
-import cc.refectorie.user.sameer.util.coref.CorefEvaluator.BCubed
 import cc.refectorie.user.sameer.util.coref.{EntityMap, CorefEvaluator, GenericEntityMap}
 import cc.refectorie.user.sameer.util.plotting.Plotting
-import org.jfree.chart.ChartFactory
-import java.util.regex.Pattern.Category
-import org.jfree.data.category.CategoryDataset
 import org.jfree.data.general.{DatasetGroup, DatasetChangeListener}
-import org.jfree.chart.plot.PlotOrientation
 import java.io.{FileReader, PrintWriter}
 import org.jfree.data.xy.{XYSeries, XYSeriesCollection, XYDataset, XYBarDataset}
 import org.jfree.chart.axis.LogarithmicAxis
@@ -69,7 +64,7 @@ abstract class Clustering extends EntityMap {
     // plot the file
     val xyColl = new XYSeriesCollection
     xyColl.addSeries(xySeries)
-    val chart = Plotting.createChart(xyColl, "Size Histogram (%s)".format(name), "Entity Size", "", false)
+    val chart = Plotting.createChart(xyColl, "Size Histogram", "Entity Size", "", false) // (%s)".format(name)
     val plot = chart.getXYPlot
     plot.setDomainAxis(new LogarithmicAxis("Entity Sizes"))
     plot.setRangeAxis(new LogarithmicAxis("Number of Entities"))
@@ -80,7 +75,7 @@ abstract class Clustering extends EntityMap {
     renderer.setSeriesShape(0, new Ellipse2D.Float(2f, 2f, 2f, 2f))
     //renderer.setSeriesFillPaint(0, colors(0 % colors.length))
     plot.setRenderer(renderer)
-    Plotting.writeToPDF("%s-%s.sizes.hist.pdf".format(outputFilename, name), chart, 1024, 768)
+    Plotting.writeToPDF("%s-%s.sizes.hist.pdf".format(outputFilename, name), chart, 400, 300)
   }
 
   def writeToFile(outputFilename: String) {
@@ -91,11 +86,19 @@ abstract class Clustering extends EntityMap {
     writer.close()
   }
 
+  def writeSizesToFile(outputFilename: String) {
+    val writer = new PrintWriter("%s-%s.map".format(outputFilename, name))
+    for ((entityStr, eid) <- entityIdMap)
+      writer.println("%d\t%s".format(getMentions(eid).size, entityStr))
+    writer.flush()
+    writer.close()
+  }
+
   def copy(minFilter: Int, maxFilter: Int): EntityMap = {
     val map = new EntityMap
     var entityId = 0
     for (entity <- getEntities) {
-      if (entity.size > minFilter && entity.size < maxFilter) {
+      if (entity.size >= minFilter && entity.size <= maxFilter) {
         for (mid <- entity) map.addMention(mid, entityId)
         entityId += 1
       }
@@ -177,22 +180,23 @@ object Baselines {
     for (t <- truth) {
       val tcopy = t.copy(minFilter, maxFilter)
       TimeUtil.snapshot("Copied truth")
-      pred.par.foreach(p => {
+      pred.foreach(p => {
         val pcopy = p.copy(tcopy)
         println(t.toString + "\n" + p.toString + "\n" + CorefEvaluator.evaluate(pcopy, tcopy, true))
       })
     }
     TimeUtil.snapshot("Evaluated")
-    truth.foreach(t => t.writeSizeHistogramToFile(output))
     truth.foreach(t => {
-      t.writeToFile(output);
+      t.writeToFile(output)
       TimeUtil.snapshot("Written " + t.name)
     })
     pred.foreach(p => {
-      p.writeToFile(output);
+      p.writeToFile(output)
       TimeUtil.snapshot("Written " + p.name)
     })
     TimeUtil.snapshot("Maps written to files")
+    truth.foreach(t => t.writeSizeHistogramToFile(output))
+    TimeUtil.snapshot("Histogram written")
   }
 }
 

@@ -20,7 +20,7 @@ class WebpageIterator(val filename: String, val takeOnly: Int = Int.MaxValue) ex
 
   def next() = {
     count += 1
-    println(count)
+    // println(count)
     Webpage.getNext(reader, count)
   }
 }
