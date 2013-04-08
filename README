@@ -1,6 +1,25 @@
-The dataset is produced in several stages.  At the moment this includes: retrieval and processing.
+# Introduction
 
-# Retrieval
+This software package contains code that computes the basic statistics on the Google WikiLinks dataset, and
+downloads & process webpages to construct a version of the dataset that contains contexts around each mention.
+
+*Note:* This file assumes knowledge of the Wikilinks dataset, see: http://iesl.cs.umass.edu/data/wiki-links
+
+# Analysis of Google Data
+
+This package contains utilities to work with original Google dataset. This includes:
+
+## Iterators (over mentions and webpages)
+
+## Misc Clusterings: including "gold" clustering, "string match" clusterings, etc. (see Tech Report).
+
+## Coreference Metrics: measuring the quality of the above (or any) predicted clustering
+
+# Creating the Dataset with the context
+
+The dataset with context is produced in several stages.  At the moment this includes: retrieval and processing.
+
+## Retrieval: Download the webpages that are referred to in the Google Dataset
 
   To retrieve the webpages:
 
@@ -19,9 +38,13 @@ The dataset is produced in several stages.  At the moment this includes: retriev
         - ...
       - ....
 
-# Processing
+## Processing: Extract HTML structure and context from the downloaded webpages, and store as thrift files.
 
   To process the downloaded files:
 
     > cd process/; mvn scala:run
+
+# Using the Dataset with the context
+
+
 
