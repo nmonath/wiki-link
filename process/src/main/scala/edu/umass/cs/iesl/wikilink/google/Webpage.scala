@@ -59,7 +59,7 @@ object Webpage {
     var line = stream.readLine().trim
     while(line != "") {
       val splits = line.split("\\t")
-      splits(0) match {
+      splits.head match {
         case MENTION => mentionLines += line
         case TOKEN   => wordLines += line
       }

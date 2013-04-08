@@ -12,7 +12,7 @@
     <maven.compiler.source>1.5</maven.compiler.source>
     <maven.compiler.target>1.5</maven.compiler.target>
     <encoding>UTF-8</encoding>
-    <scala.version>2.9.1</scala.version>
+    <scala.version>2.9.2</scala.version>
   </properties>
 
   <repositories>
@@ -36,6 +36,16 @@
       <name>IESL snapshot repository</name>
       <url>https://dev-iesl.cs.umass.edu/nexus/content/repositories/snapshots/</url>
     </repository>
+    <repository>
+      <id>sameer-releases</id>
+      <name>Sameer's releases repository</name>
+      <url>http://nexus.sameersingh.org/releases/</url>
+    </repository>
+    <repository>
+      <id>sameer-snapshots</id>
+      <name>Sameer's snapshots repository</name>
+      <url>http://nexus.sameersingh.org/snapshots/</url>
+    </repository>
   </repositories>
 
   <pluginRepositories>
@@ -48,55 +58,24 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-library</artifactId>
-      <version>2.9.1</version>
+      <groupId>org.sameersingh.utils</groupId>
+      <artifactId>cmdopts</artifactId>
+      <version>0.1.1-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>org.ccil.cowan.tagsoup</groupId>
-      <artifactId>tagsoup</artifactId>
-      <version>1.2</version>
+      <groupId>org.sameersingh.utils</groupId>
+      <artifactId>timing</artifactId>
+      <version>0.1.1-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>cc.refectorie.user.sameer</groupId>
-      <artifactId>util</artifactId>
-      <version>1.1-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>net.liftweb</groupId>
-      <artifactId>lift-json_2.9.1</artifactId>
-      <version>2.4</version>
-    </dependency>
-    <dependency>
-        <groupId>net.debasishg</groupId>
-        <artifactId>redisclient_2.9.1</artifactId>
-        <version>2.4.2</version>
-    </dependency>
-
-    <!-- Test -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.10</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.9.1</artifactId>
-      <version>1.6.9</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_2.9.1</artifactId>
-      <version>1.7.1</version>
-      <scope>test</scope>
+      <groupId>org.sameersingh.utils</groupId>
+      <artifactId>coref</artifactId>
+      <version>0.1.1-SNAPSHOT</version>
     </dependency>
   </dependencies>
 
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
-    <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
       <plugin>
         <groupId>net.alchim31.maven</groupId>
@@ -122,136 +101,18 @@
           <useZincServer>true</useZincServer>
           <scalaVersion>${scala.version}</scalaVersion>
           <launchers>
-              <launcher>
-                  <id>write-json-redis-master</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
-                  <args>
-                      <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
-                      <arg>@pages=${basedir}/../retrieve/pages</arg>
-                      <arg>@take=100000</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=master</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>write-json-redis-slave</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
-                  <args>
-                      <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
-                      <arg>@pages=${basedir}/../retrieve/pages</arg>
-                      <arg>@json=${basedir}/json</arg>
-                      <arg>@take=100000</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=slave</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>avg-context-master</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.AverageContextSize</mainClass>
-                  <args>
-                      <!--<arg>@json=${basedir}/json</arg>-->
-                      <arg>@take=10000</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=master</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>avg-context-slave</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.AverageContextSize</mainClass>
-                  <args>
-                      <!--<arg>@json=${basedir}/json</arg>-->
-                      <arg>@take=10000</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=slave</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>num-pages-with-mentions-master</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.NumPagesWithMentions</mainClass>
-                  <args>
-                      <arg>@json=${basedir}/json</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=master</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>num-pages-with-mentions-slave</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.NumPagesWithMentions</mainClass>
-                  <args>
-                      <arg>@json=${basedir}/json</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=slave</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>context-word-count-master</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.ContextWordCount</mainClass>
-                  <args>
-                      <arg>@json=${basedir}/json</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=master</arg>
-                  </args>
-              </launcher>
-              <launcher>
-                  <id>context-word-count-slave</id>
-                  <mainClass>edu.umass.cs.iesl.wikilink.process.ContextWordCount</mainClass>
-                  <args>
-                      <arg>@json=${basedir}/json</arg>
-                      <arg>@redis=avon4:63793</arg>
-                      <arg>@role=slave</arg>
-                  </args>
-              </launcher>
             <launcher>
-              <id>baselines</id>
-              <mainClass>edu.umass.cs.iesl.wikilink.Baselines</mainClass>
-              <jvmArgs>
-                <jvmArg>-Xmx100g</jvmArg>
-              </jvmArgs>
-            </launcher>
-            <launcher>
-              <id>plot-histogram</id>
-              <mainClass>edu.umass.cs.iesl.wikilink.PlotHistogram</mainClass>
-              <jvmArgs>
-                <jvmArg>-Xmx3g</jvmArg>
-              </jvmArgs>
-            </launcher>
-            <launcher>
-              <id>wiki-dists</id>
-              <mainClass>edu.umass.cs.iesl.wikilink.WikiURLDistribution</mainClass>
-            </launcher>
-            <launcher>
-              <id>write-json</id>
-              <mainClass>edu.umass.cs.iesl.wikilink.process.WriteToJSON</mainClass>
+              <id>write-json-redis-master</id>
+              <mainClass>edu.umass.cs.iesl.wikilink.process.Process</mainClass>
               <args>
                 <arg>@dataset=/iesl/canvas/sameer/dat/wiki-link/data-00000-of-00001</arg>
-                <arg>@json=${basedir}/json</arg>
                 <arg>@pages=${basedir}/../retrieve/pages</arg>
-                <arg>@output=${basedir}/../process</arg>
-                <arg>@take=1000</arg>
-              </args>
-            </launcher>
-            <launcher>
-              <id>avg-context</id>
-              <mainClass>edu.umass.cs.iesl.wikilink.process.AverageContextSize</mainClass>
-              <args>
-                <arg>@json=${basedir}/json</arg>
-                <arg>@take=1000</arg>
+                <arg>@take=100000</arg>
+                <arg>@redis=avon4:63793</arg>
+                <arg>@role=master</arg>
               </args>
             </launcher>
           </launchers>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.6</version>
-        <configuration>
-          <useFile>false</useFile>
-          <disableXmlReport>true</disableXmlReport>
-          <includes>
-            <include>**/*Test.*</include>
-            <include>**/*Suite.*</include>
-          </includes>
         </configuration>
       </plugin>
     </plugins>

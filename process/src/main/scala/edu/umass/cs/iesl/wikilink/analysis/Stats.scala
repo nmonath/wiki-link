@@ -1,9 +1,10 @@
-package edu.umass.cs.iesl.wikilink.google
+package edu.umass.cs.iesl.wikilink.analysis
 
-import cc.refectorie.user.sameer.util.CmdLine
 import java.net.URL
 import java.util.regex.Pattern
 import collection.mutable.{HashSet, HashMap}
+import org.sameersingh.utils.cmdopts.CmdLine
+import edu.umass.cs.iesl.wikilink.google.{WebpageIterator, Mention, Webpage}
 
 /**
  * @author sameer
@@ -61,8 +62,8 @@ object Stats {
     val anchorLowerTexts = new HashSet[String]
 
     def process(m: Mention) {
-      urls += m.url.replaceAll("^shttp","http")
-      paths += new URL(m.url.replaceAll("^shttp","http")).getPath
+      urls += m.url.replaceAll("^shttp", "http")
+      paths += new URL(m.url.replaceAll("^shttp", "http")).getPath
       anchorTexts += m.text
       anchorLowerTexts += m.text.toLowerCase
       num += 1
@@ -71,15 +72,21 @@ object Stats {
     override def toString = "mention count: %d\nunique wiki urls: %d\nunique wiki paths: %d\nunique anchors: %d\nunique anchors (lower): %d".format(num, urls.size, paths.size, anchorTexts.size, anchorLowerTexts.size)
   }
 
-  val pageHooks = Seq(PageCounts, PageTypes)
-  val mentionHooks = Seq(MentionCounts)
+  val pageHooks: Seq[PageStats] = Seq(PageCounts, PageTypes)
+  val mentionHooks: Seq[MentionStats] = Seq(MentionCounts)
 
   def main(args: Array[String]) {
     val opts = CmdLine.parse(args)
     println(opts)
-    val filename = opts.getOrElse("file", "/Users/sameer/tmp/input")
+    val dirName = opts.get("dir")
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
-    val iterator = new WebpageIterator(filename, takeOnly)
+
+    if (dirName.isEmpty) {
+      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.analysis.Stats -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
+      sys.exit(1)
+    }
+
+    val iterator = WebpageIterator(dirName.get).take(takeOnly)
     for (p <- iterator) {
       pageHooks.foreach(_.process(p))
       for (m <- p.mentions) mentionHooks.foreach(_.process(m))
