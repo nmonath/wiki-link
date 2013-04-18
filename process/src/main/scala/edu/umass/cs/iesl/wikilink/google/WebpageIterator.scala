@@ -58,7 +58,7 @@ object WebpageIteratorRunner {
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
 
     if (dirName.isEmpty) {
-      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.analysis.WebpageIteratorRunner" +
+      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.WebpageIteratorRunner" +
             " -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
       sys.exit(1)
     }

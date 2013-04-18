@@ -1,7 +1,7 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 
 import org.jsoup.nodes.Element
-import edu.umass.cs.iesl.wiki.{Context => ContextWrapper, WikiLinkItem, Mention}
+import edu.umass.cs.iesl.wikilink.expanded.data.{Context => ContextWrapper, WikiLinkItem, Mention}
 import java.util.regex.Pattern
 import org.jsoup.Jsoup
 import collection.mutable
@@ -140,7 +140,7 @@ object Context {
   def getFbId(url:String):Option[String]={
     val Matcher = """.+/(.*)""".r
     val wikiUrl = StringUtils.stripEnd(url,"/")
-    //extract wiki page title from the url
+    //extract data page title from the url
     val title = wikiUrl match {
       case Matcher(temp) => temp
       case _ => """(?<=http://en.wikipedia.org/wiki/)(.*)(?!/)""".r.findFirstIn(wikiUrl).get
@@ -167,7 +167,7 @@ object Context {
    * Test case, uncomment and run
    */
   //  def main(args:Array[String]){
-  //    val wli = edu.umass.cs.iesl.wiki.WikiLinkItem(
+  //    val wli = edu.umass.cs.iesl.data.WikiLinkItem(
   //      docId = 1,
   //      url = "",
   //      content = PageContentItem(
@@ -175,28 +175,28 @@ object Context {
   //        fullText = null,
   //        articleText = null,
   //        dom = Some("""<!DOCTYPE html><html><head prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb# githubog: http://ogp.me/ns/fb/githubog#"><title></title></head>"""+
-  //                  """<body class="logged_in page-profile macintosh  env-production  "><div id="wrapper"><p><a href="http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy">Baron Augustin-Louis Cauchy</a> was a French mathematician who was an early pioneer of analysis. He started the project of formulating and proving the theorems of infinitesimal calculus in a rigorous manner, rejecting the heuristic principle of the generality of algebra exploited by earlier authors.</p>"""+
-  //                  """<p>"More concepts and theorems have been named for Cauchy than for any other mathematician (in elasticity alone there are sixteen concepts and theorems named for <a href="http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy">Cauchy</a>)."</p>"""+
+  //                  """<body class="logged_in page-profile macintosh  env-production  "><div id="wrapper"><p><a href="http://en.wikipedia.org/data/Augustin-Louis_Cauchy">Baron Augustin-Louis Cauchy</a> was a French mathematician who was an early pioneer of analysis. He started the project of formulating and proving the theorems of infinitesimal calculus in a rigorous manner, rejecting the heuristic principle of the generality of algebra exploited by earlier authors.</p>"""+
+  //                  """<p>"More concepts and theorems have been named for Cauchy than for any other mathematician (in elasticity alone there are sixteen concepts and theorems named for <a href="http://en.wikipedia.org/data/Augustin-Louis_Cauchy">Cauchy</a>)."</p>"""+
   //                    """<p>Cauchy was a prolific writer; he wrote approximately eight hundred research articles and five complete textbooks. He was a devout Roman Catholic, strict Bourbon royalist, and a close associate of the Jesuit order.</p>"""+
-  //                    """<p><a href="http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy"> Cauchy </a> was the son of Louis François Cauchy (1760–1848) and Marie-Madeleine Desestre. Cauchy had two brothers, Alexandre Laurent <a href="http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy"> Cauchy </a> (1792–1857), who became a president of a division of the court of appeal in 1847, and a judge of the court of cassation in 1849; and Eugene François Cauchy (1802–1877), a publicist who also wrote several mathematical works."""+
+  //                    """<p><a href="http://en.wikipedia.org/data/Augustin-Louis_Cauchy"> Cauchy </a> was the son of Louis François Cauchy (1760–1848) and Marie-Madeleine Desestre. Cauchy had two brothers, Alexandre Laurent <a href="http://en.wikipedia.org/data/Augustin-Louis_Cauchy"> Cauchy </a> (1792–1857), who became a president of a division of the court of appeal in 1847, and a judge of the court of cassation in 1849; and Eugene François Cauchy (1802–1877), a publicist who also wrote several mathematical works."""+
   //                """Cauchy married Aloise de Bure in 1818. She was a close relative of the publisher who published most of Cauchy's works. By her he had two daughters, Marie Françoise Alicia (1819) and Marie Mathilde (1823).</p>"""+
   //                    """</div></body></html>""")
   //      ),
   //      rareWords = null,
   //      mentions = Seq(Mention(
-  //      "http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy",
+  //      "http://en.wikipedia.org/data/Augustin-Louis_Cauchy",
   //      "Baron Augustin-Louis Cauchy",
   //      0),
   //        Mention(
-  //          "http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy",
+  //          "http://en.wikipedia.org/data/Augustin-Louis_Cauchy",
   //          "Cauchy",
   //          0),
   //        Mention(
-  //          "http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy",
+  //          "http://en.wikipedia.org/data/Augustin-Louis_Cauchy",
   //          "Cauchy",
   //          0),
   //        Mention(
-  //          "http://en.wikipedia.org/wiki/Augustin-Louis_Cauchy",
+  //          "http://en.wikipedia.org/data/Augustin-Louis_Cauchy",
   //          "Cauchy",
   //          0))
   //    )

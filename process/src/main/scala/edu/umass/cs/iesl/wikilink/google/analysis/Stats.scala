@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.wikilink.analysis
+package edu.umass.cs.iesl.wikilink.google.analysis
 
 import java.net.URL
 import java.util.regex.Pattern
@@ -82,7 +82,7 @@ object Stats {
     val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
 
     if (dirName.isEmpty) {
-      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.analysis.Stats -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
+      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.Stats -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
       sys.exit(1)
     }
 

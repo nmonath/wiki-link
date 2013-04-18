@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.wikilink.analysis
+package edu.umass.cs.iesl.wikilink.google.analysis
 
 import org.sameersingh.utils.cmdopts.CmdLine
 import org.sameersingh.utils.timing.TimeUtil
@@ -16,7 +16,7 @@ object WikiURLDistribution {
     val output = opts.getOrElse("output", "output")
 
     if (dirName.isEmpty) {
-      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.analysis.WikiURLDistribution -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
+      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.WikiURLDistribution -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
       sys.exit(1)
     }
     TimeUtil.init

@@ -37,22 +37,6 @@
       <url>https://dev-iesl.cs.umass.edu/nexus/content/repositories/snapshots/</url>
     </repository>
     <repository>
-      <id>sameer-releases</id>
-      <name>Sameer's releases repository</name>
-      <url>http://nexus.sameersingh.org/releases/</url>
-    </repository>
-    <repository>
-      <id>sameer-snapshots</id>
-      <name>Sameer's snapshots repository</name>
-      <url>http://nexus.sameersingh.org/snapshots/</url>
-    </repository>
-    <repository>
-        <id>ibiblio</id>
-        <name>ibiblio</name>
-        <url>http://mirrors.ibiblio.org/pub/mirrors/maven2/</url>
-        <layout>default</layout>
-    </repository>
-    <repository>
         <id>twittercom</id>
         <name>twitter.com</name>
         <url>http://maven.twttr.com/</url>
@@ -62,12 +46,6 @@
         <id>powermockapi</id>
         <name>powermock-api</name>
         <url>http://powermock.googlecode.com/svn/repo/</url>
-        <layout>default</layout>
-    </repository>
-    <repository>
-        <id>scalatoolsorg</id>
-        <name>scala-tools.org</name>
-        <url>http://scala-tools.org/repo-releases/</url>
         <layout>default</layout>
     </repository>
     <repository>
@@ -112,6 +90,22 @@
         <url>https://boilerpipe.googlecode.com/svn/repo/</url>
         <layout>default</layout>
     </repository>
+    <repository>
+      <id>sameer-releases</id>
+      <name>Sameer's releases repository</name>
+      <url>http://nexus.sameersingh.org/releases/</url>
+    </repository>
+    <repository>
+      <id>sameer-snapshots</id>
+      <name>Sameer's snapshots repository</name>
+      <url>http://nexus.sameersingh.org/snapshots/</url>
+    </repository>
+    <repository>
+        <id>ibiblio</id>
+        <name>ibiblio</name>
+        <url>http://mirrors.ibiblio.org/pub/mirrors/maven2/</url>
+        <layout>default</layout>
+    </repository>
   </repositories>
 
   <pluginRepositories>
@@ -137,12 +131,6 @@
       <groupId>org.sameersingh.utils</groupId>
       <artifactId>coref</artifactId>
       <version>0.1.1-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-        <groupId>org.scala-lang</groupId>
-        <artifactId>scala-library</artifactId>
-        <version>2.9.2</version>
-        <scope>compile</scope>
     </dependency>
     <dependency>
         <groupId>org.scala-lang</groupId>

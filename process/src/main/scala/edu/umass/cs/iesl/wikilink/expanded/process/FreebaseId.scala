@@ -1,6 +1,6 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 
-import edu.umass.cs.iesl.wiki.WikiLinkItem
+import edu.umass.cs.iesl.wikilink.expanded.data.WikiLinkItem
 import org.apache.commons.lang.StringUtils
 import scala.Some
 import java.io.File
@@ -31,7 +31,7 @@ object FreebaseId {
       mention.freebaseId match{
         case None =>{
           val wikiUrl = StringUtils.stripEnd(mention.wikiUrl,"/")
-          //extract wiki page title from the url
+          //extract data page title from the url
           val title = wikiUrl match {
             case Matcher(temp) => temp
             case _ => """(?<=http://en.wikipedia.org/wiki/)(.*)(?!/)""".r.findFirstIn(wikiUrl).get
@@ -61,7 +61,7 @@ object FreebaseId {
       (mention.context,mention.freebaseId) match{
         case (Some(context),None) => {
           val wikiUrl = StringUtils.stripEnd(mention.wikiUrl,"/")
-          //extract wiki page title from the url
+          //extract data page title from the url
           val title = wikiUrl match {
             case Matcher(temp) => temp
             case _ => """(?<=http://en.wikipedia.org/wiki/)(.*)(?!/)""".r.findFirstIn(wikiUrl).get
@@ -95,7 +95,7 @@ object FreebaseId {
         }
         case (None,None) =>{
           val wikiUrl = StringUtils.stripEnd(mention.wikiUrl,"/")
-          //extract wiki page title from the url
+          //extract data page title from the url
           val title = wikiUrl match {
             case Matcher(temp) => temp
             case _ => """(?<=http://en.wikipedia.org/wiki/)(.*)(?!/)""".r.findFirstIn(wikiUrl).get

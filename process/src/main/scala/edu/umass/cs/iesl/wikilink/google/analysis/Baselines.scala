@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.wikilink.analysis
+package edu.umass.cs.iesl.wikilink.google.analysis
 
 import java.net.URL
 import java.io.PrintWriter

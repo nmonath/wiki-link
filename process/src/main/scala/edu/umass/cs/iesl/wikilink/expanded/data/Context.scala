@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.wiki
+package edu.umass.cs.iesl.wikilink.expanded.data
 
 import com.twitter.scrooge.{ThriftStruct, ThriftStructCodec}
 import org.apache.thrift.protocol._

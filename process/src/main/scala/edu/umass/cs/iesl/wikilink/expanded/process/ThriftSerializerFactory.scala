@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 
 import org.apache.thrift.protocol.TBinaryProtocol
 import org.apache.thrift.transport.TIOStreamTransport

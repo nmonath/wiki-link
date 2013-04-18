@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 
 import java.io.File
 

@@ -1,4 +1,4 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 import scala.xml.PrettyPrinter
 import scala.xml.XML
 import scala.io.Source

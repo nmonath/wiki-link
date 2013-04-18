@@ -1,6 +1,6 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 
-import edu.umass.cs.iesl.wiki._
+import edu.umass.cs.iesl.wikilink.expanded.data._
 import java.nio.ByteBuffer
 import io.Source
 import java.nio.charset.Charset

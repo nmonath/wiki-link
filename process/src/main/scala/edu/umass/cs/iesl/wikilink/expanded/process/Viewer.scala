@@ -1,6 +1,6 @@
-package edu.umass.cs.iesl.process
+package edu.umass.cs.iesl.wikilink.expanded.process
 
-import edu.umass.cs.iesl.wiki.WikiLinkItem
+import edu.umass.cs.iesl.wikilink.expanded.data.WikiLinkItem
 import java.io.File
 
 object Viewer {
