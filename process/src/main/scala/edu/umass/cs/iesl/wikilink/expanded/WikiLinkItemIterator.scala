@@ -22,7 +22,15 @@ object WikiLinkItemIterator {
   def apply(d: File): Iterator[WikiLinkItem] = getFiles(d).flatMap(f => new PerFileWebpageIterator(f))
 
   def main(args: Array[String]) = {
-    getFiles(new File(args(0))).foreach(f => println(f.getAbsolutePath))
+    val it = WikiLinkItemIterator(args(0))
+    var c = 0
+    var m = 0
+    for (wli <- it) {
+      m += wli.mentions.size
+      c += 1
+    }
+    println("Total Pages : " + c)
+    println("Total Mentions : " + m)
   }
 }
 
