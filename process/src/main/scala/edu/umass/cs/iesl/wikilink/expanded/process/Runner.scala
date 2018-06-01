@@ -2,7 +2,7 @@ package edu.umass.cs.iesl.wikilink.expanded.process
 
 import edu.umass.cs.iesl.wikilink.expanded.data._
 import java.nio.ByteBuffer
-import io.Source
+import scala.io.Source
 import java.nio.charset.Charset
 import java.io.File
 import scala.collection.mutable.ListBuffer

@@ -3,7 +3,7 @@ package edu.umass.cs.iesl.wikilink.google.analysis
 import java.net.URL
 import java.util.regex.Pattern
 import collection.mutable.{HashSet, HashMap}
-import org.sameersingh.utils.cmdopts.CmdLine
+//import org.sameersingh.utils.cmdopts.CmdLine
 import edu.umass.cs.iesl.wikilink.google.{WebpageIterator, Mention, Webpage}
 
 /**
@@ -75,23 +75,24 @@ object Stats {
   val pageHooks: Seq[PageStats] = Seq(PageCounts, PageTypes)
   val mentionHooks: Seq[MentionStats] = Seq(MentionCounts)
 
-  def main(args: Array[String]) {
-    val opts = CmdLine.parse(args)
-    println(opts)
-    val dirName = opts.get("dir")
-    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
-
-    if (dirName.isEmpty) {
-      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.Stats -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
-      sys.exit(1)
-    }
-
-    val iterator = WebpageIterator(dirName.get).take(takeOnly)
-    for (p <- iterator) {
-      pageHooks.foreach(_.process(p))
-      for (m <- p.mentions) mentionHooks.foreach(_.process(m))
-    }
-    pageHooks.foreach(p => println(p))
-    mentionHooks.foreach(m => println(m))
-  }
+  //TODO: Fix
+//  def main(args: Array[String]) {
+//    val opts = CmdLine.parse(args)
+//    println(opts)
+//    val dirName = opts.get("dir")
+//    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
+//
+//    if (dirName.isEmpty) {
+//      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.Stats -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
+//      sys.exit(1)
+//    }
+//
+//    val iterator = WebpageIterator(dirName.get).take(takeOnly)
+//    for (p <- iterator) {
+//      pageHooks.foreach(_.process(p))
+//      for (m <- p.mentions) mentionHooks.foreach(_.process(m))
+//    }
+//    pageHooks.foreach(p => println(p))
+//    mentionHooks.foreach(m => println(m))
+//  }
 }

@@ -2,7 +2,7 @@ package edu.umass.cs.iesl.wikilink.google
 
 import java.io._
 import java.util.zip.GZIPInputStream
-import org.sameersingh.utils.cmdopts.CmdLine
+//import org.sameersingh.utils.cmdopts.CmdLine
 
 /**
  * @author sameer
@@ -50,19 +50,20 @@ object WebpageIterator {
   def apply(dirName: String): Iterator[Webpage] = apply(getFiles(dirName))
 }
 
-object WebpageIteratorRunner {
-  def main(args: Array[String]) {
-    val opts = CmdLine.parse(args)
-    println(opts)
-    val dirName = opts.get("dir")
-    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
-
-    if (dirName.isEmpty) {
-      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.WebpageIteratorRunner" +
-            " -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
-      sys.exit(1)
-    }
-    val iterator = WebpageIterator(dirName.get).take(takeOnly)
-    iterator.foreach(w => println(w))
-  }
-}
+// TODO: Fix
+//object WebpageIteratorRunner {
+//  def main(args: Array[String]) {
+//    val opts = CmdLine.parse(args)
+//    println(opts)
+//    val dirName = opts.get("dir")
+//    val takeOnly = opts.getOrElse("take", Int.MaxValue.toString).toInt
+//
+//    if (dirName.isEmpty) {
+//      println("Usage: mvn scala:run -DmainClass=edu.umass.cs.iesl.wikilink.google.analysis.WebpageIteratorRunner" +
+//            " -DaddArgs=\"@dir=/dir/containing/google/gz/files\"")
+//      sys.exit(1)
+//    }
+//    val iterator = WebpageIterator(dirName.get).take(takeOnly)
+//    iterator.foreach(w => println(w))
+//  }
+//}

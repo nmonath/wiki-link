@@ -15,10 +15,11 @@
   <inceptionYear>2012</inceptionYear>
 
   <properties>
-    <maven.compiler.source>1.5</maven.compiler.source>
-    <maven.compiler.target>1.5</maven.compiler.target>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
     <encoding>UTF-8</encoding>
-    <scala.version>2.9.2</scala.version>
+    <scala.majorVersion>2.11</scala.majorVersion>
+    <scala.minorVersion>.7</scala.minorVersion>
   </properties>
 
   <repositories>
@@ -26,6 +27,14 @@
       <id>scala-tools.org</id>
       <name>Scala-Tools Maven2 Repository</name>
       <url>http://scala-tools.org/repo-releases</url>
+    </repository>
+    <repository>
+      <id>sonatype-snapshot</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+    <repository>
+      <id>central</id>
+      <url>http://central.maven.org/maven2/</url>
     </repository>
     <repository>
       <id>third.iesl.cs.umass.edu</id>
@@ -123,79 +132,79 @@
   </pluginRepositories>
 
   <dependencies>
-    <dependency>
-      <groupId>org.sameersingh.utils</groupId>
-      <artifactId>cmdopts</artifactId>
-      <version>0.1.1-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>org.sameersingh.utils</groupId>
-      <artifactId>timing</artifactId>
-      <version>0.1.1-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>org.sameersingh.utils</groupId>
-      <artifactId>coref</artifactId>
-      <version>0.1.1-SNAPSHOT</version>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.sameersingh.utils</groupId>-->
+      <!--<artifactId>cmdopts</artifactId>-->
+      <!--<version>0.1.1-SNAPSHOT</version>-->
+    <!--</dependency>-->
+    <!--<dependency>-->
+      <!--<groupId>org.sameersingh.utils</groupId>-->
+      <!--<artifactId>timing</artifactId>-->
+      <!--<version>0.1.1-SNAPSHOT</version>-->
+    <!--</dependency>-->
+    <!--<dependency>-->
+      <!--<groupId>org.sameersingh.utils</groupId>-->
+      <!--<artifactId>coref</artifactId>-->
+      <!--<version>0.1.1-SNAPSHOT</version>-->
+    <!--</dependency>-->
     <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
-      <version>2.9.2</version>
-      <scope>compile</scope>
+      <version>${scala.majorVersion}${scala.minorVersion}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
-      <version>0.8.0</version>
+      <version>0.10.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.6.6</version>
+      <version>1.7.24</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-core</artifactId>
-      <version>5.0.0</version>
+      <artifactId>finagle-core_2.11</artifactId>
+      <version>6.42.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>finagle-thrift</artifactId>
-      <version>5.0.0</version>
+      <artifactId>finagle-thrift_2.11</artifactId>
+      <version>6.42.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>org.jboss.netty</groupId>
-      <artifactId>netty</artifactId>
-      <version>3.2.6.Final</version>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-all</artifactId>
+      <version>4.1.8.Final</version>
       <scope>compile</scope>
     </dependency>
+
     <dependency>
       <groupId>com.twitter</groupId>
-      <artifactId>scrooge-runtime_2.9.2</artifactId>
-      <version>3.0.1</version>
+      <artifactId>scrooge-runtime_2.11</artifactId>
+      <version>4.5.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>xerces</groupId>
       <artifactId>xercesImpl</artifactId>
-      <version>2.9.1</version>
+      <version>2.11.0.SP5</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>net.sourceforge.nekohtml</groupId>
       <artifactId>nekohtml</artifactId>
-      <version>1.9.13</version>
+      <version>1.9.22</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>de.l3s.boilerpipe</groupId>
       <artifactId>boilerpipe</artifactId>
-      <version>1.2.0</version>
+      <version>1.1.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -206,31 +215,31 @@
     </dependency>
     <dependency>
       <groupId>net.liftweb</groupId>
-      <artifactId>lift-json_2.9.2</artifactId>
-      <version>2.5-M1</version>
+      <artifactId>lift-json_2.11</artifactId>
+      <version>3.1.0-M1</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>13.0</version>
+      <version>21.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_2.9.2</artifactId>
-      <version>1.8</version>
+      <artifactId>scalatest_2.11</artifactId>
+      <version>3.0.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.jsoup</groupId>
       <artifactId>jsoup</artifactId>
-      <version>1.7.1</version>
+      <version>1.10.2</version>
     </dependency>
     <dependency>
       <groupId>redis.clients</groupId>
       <artifactId>jedis</artifactId>
-      <version>1.5.2</version>
+      <version>2.9.0</version>
     </dependency>
   </dependencies>
 
@@ -259,49 +268,33 @@
     <sourceDirectory>src/main/scala</sourceDirectory>
     <plugins>
       <plugin>
-        <groupId>net.alchim31.maven</groupId>
-        <artifactId>scala-maven-plugin</artifactId>
-        <version>3.1.0</version>
+        <groupId>org.scala-tools</groupId>
+        <artifactId>maven-scala-plugin</artifactId>
         <executions>
           <execution>
             <goals>
               <goal>compile</goal>
               <goal>testCompile</goal>
             </goals>
-            <configuration>
-              <args>
-                <arg>-make:transitive</arg>
-                <arg>-dependencyfile</arg>
-                <arg>${project.build.directory}/.scala_dependencies</arg>
-              </args>
-            </configuration>
           </execution>
         </executions>
-        <configuration>
-          <recompileMode>incremental</recompileMode>
-          <useZincServer>true</useZincServer>
-          <scalaVersion>${scala.version}</scalaVersion>
-          <launchers>
-            <launcher>
-              <id>expanded-iterator</id>
-              <mainClass>edu.umass.cs.iesl.wikilink.expanded.WikiLinkItemIterator</mainClass>
-            </launcher>
-          </launchers>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-source-plugin</artifactId>
-        <version>2.2.1</version>
-        <executions>
-          <execution>
-            <id>attach-sources</id>
-            <phase>package</phase>
-            <goals>
-              <goal>jar-no-fork</goal>
-            </goals>
-          </execution>
-        </executions>
+        <artifactId>maven-eclipse-plugin</artifactId>
+        <configuration>
+          <downloadSources>true</downloadSources>
+          <buildcommands>
+            <buildcommand>ch.epfl.lamp.sdt.core.scalabuilder</buildcommand>
+          </buildcommands>
+          <additionalProjectnatures>
+            <projectnature>ch.epfl.lamp.sdt.core.scalanature</projectnature>
+          </additionalProjectnatures>
+          <classpathContainers>
+            <classpathContainer>org.eclipse.jdt.launching.JRE_CONTAINER</classpathContainer>
+            <classpathContainer>ch.epfl.lamp.sdt.launching.SCALA_CONTAINER</classpathContainer>
+          </classpathContainers>
+        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
@@ -322,6 +315,23 @@
           </descriptorRefs>
         </configuration>
       </plugin>
+      <!-- disable surefire -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.7</version>
+        <configuration>
+          <skipTests>true</skipTests>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.scala-tools</groupId>
+        <artifactId>maven-scala-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </reporting>
 </project>

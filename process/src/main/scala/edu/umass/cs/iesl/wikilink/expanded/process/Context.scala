@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import collection.mutable
 import collection.mutable.{HashMap, ArrayBuffer}
 import org.apache.commons.lang.StringUtils
-import io.Source
+import scala.io.Source
 import scala.collection.JavaConverters._
 import java.io.{InputStreamReader, BufferedReader}
 import java.util.zip.GZIPInputStream
